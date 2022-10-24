@@ -13,7 +13,7 @@ class ReadBase:
         # Identifica extensão do arquivo -> self.ext é definido pela classe herdeira.
         fname_dummy, file_extension = os.path.splitext(filename)
         if file_extension not in self.extension:
-            raise Exception("Invalid file format")
+            raise TypeError # modify later 
 
         self.path_data = path_data
         self.filename = filename
@@ -22,16 +22,22 @@ class ReadExcel(ReadBase):
     '''
     
     '''
-    extension = ["xlsx", "xls"]
+    extension = [".xlsx", ".xls"]
     
-    def read_file(self, sheet_name=None):
-        return pd.read_excel(os.path.join(self.path_data, self.filename, sheet_name=sheet_name))
+    def read_file(self, **kwargs):
+        return pd.read_excel(os.path.join(self.path_data, self.filename), **kwargs)
 
 class ReadDBF(ReadBase):
     '''
     
     '''
-    extension = ["dbf", "DBF"]
+    extension = [".dbf", ".DBF"]
 
-    def read_file(self, codec="latin"):
-        return Dbf5(os.path.join(path_to_dbf, fname), codec=codec).to_dataframe()
+    def read_file(self, **kwargs):
+        return Dbf5(os.path.join(self.path_data, self.filename), **kwargs).to_dataframe()
+
+class ReadCSV(ReadBase):
+    extension = [".csv", ".CSV"]
+
+    def read_file(self, **kwargs):
+        return pd.read_csv(os.path.join(self.path_data, self.filename), **kwargs)
