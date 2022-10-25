@@ -4,6 +4,7 @@
 import os
 import pandas as pd
 from simpledbf import Dbf5
+from src.CustomExceptions import *
 
 class ReadBase:
     def __init__(self, path_data, filename) -> None:
@@ -13,7 +14,7 @@ class ReadBase:
         # Identifica extensão do arquivo -> self.ext é definido pela classe herdeira.
         fname_dummy, file_extension = os.path.splitext(filename)
         if file_extension not in self.extension:
-            raise TypeError # modify later 
+            raise FileExtensionError("File extension is not recognized.")
 
         self.path_data = path_data
         self.filename = filename
