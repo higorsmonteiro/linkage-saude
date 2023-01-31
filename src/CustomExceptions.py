@@ -6,3 +6,6 @@ class FileExtensionError(Exception):
 
 class NoDataLoaded(Exception):
     pass
+
+class NoIDCreated(Exception):
+    pass
