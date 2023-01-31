@@ -30,6 +30,10 @@ class DataBase:
         cols_temp = self._raw_data.dropna(axis=1, how='all').columns
         self.empty_columns = [ x for x in self._raw_data if x not in cols_temp ]
 
+        # -- Id created
+        self.has_id = False
+        self.validated = False
+
     @property
     def raw_data(self):
         return self._raw_data
@@ -116,18 +120,20 @@ class DataSinan(DataBase):
         # -- Validation 1: Date columns
         try:
             schema_dates_1.validate(self._raw_data)
+            self.validated = True
         except (pandera.errors.SchemaError, pandera.errors.SchemaErrors):
             try:
                 schema_dates_2.validate(self._raw_data)
                 # -- Covert object columns
                 self._raw_data["DT_NOTIFIC"] = pd.to_datetime(self._raw_data["DT_NOTIFIC"])
-
+                self.validated = True
             except (pandera.errors.SchemaError, pandera.errors.SchemaErrors):
                 pandera.errors.SchemaError("Essential date columns are neither date nor object format")
 
         # -- Validation 2: Essential SINAN columns (original data must be preserved => object columns)
         try:
             schema_object.validate(self._raw_data.dropna(axis=1, how='all'))
+            self.validated = True
         except (pandera.errors.SchemaError, pandera.errors.SchemaErrors) as err:
             print(err.args)
 
@@ -143,6 +149,7 @@ class DataSinan(DataBase):
         
         self._data = pd.DataFrame(self._raw_data["ID_GEO"])
         self._raw_data = self._raw_data.drop("DT_NOTIFIC_FMT", axis=1)
+        self.has_id = True
 
     def process(self):
         '''
