@@ -29,12 +29,22 @@ class ProcessSinan:
         '''
         self.data_object = DataSinan
 
-        # -- Check validation and Id of the data object parsed
+        # -- Check validation and ID of the data object parsed
         if not self.data_object.has_id or not self.data_object.validated:
             raise ValueError("Data object parsed has no unique ID associated or it is not validated.")
 
+        # -- To be immutable
         self._raw_data = self.data_object._raw_data
+        # -- Data for Linkage-Deduplication (Starts with only the ID)
         self._data = self.data_object._data
+
+    @property
+    def raw_data(self):
+        return self._raw_data
+
+    @raw_data.setter
+    def raw_data(self, x):
+        raise AttributeError("Not possible to change this attribute.")
 
     def process(self):
         '''
@@ -67,5 +77,12 @@ class ProcessSinan:
         self._data["bairro"] = self._raw_data["NM_BAIRRO"].apply(lambda x: x.upper().strip() if pd.notna(x) else np.nan)
         self._data["bairro"] = self._data["bairro"].apply(lambda x: utils.replace_string(x, sep=" ") if pd.notna(x) else np.nan)
 
+        self._data = self._data.drop("dt_nasc", axis=1)
         ## --> FONETICA for blocking
         self._data["FONETICA_N"] = self._data["nome"].apply(lambda x: f"{x.split(' ')[0]}{x.split(' ')[-1]}" if pd.notna(x) else np.nan)
+
+    def group_linked(self, pairs):
+        '''
+        
+        '''
+        pass
