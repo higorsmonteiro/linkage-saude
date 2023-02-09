@@ -4,8 +4,8 @@ class DataSourceNotMatched(Exception):
 class FileExtensionError(Exception):
     pass
 
-class NoDataLoaded(Exception):
+class UniqueIdentifierMissing(Exception):
     pass
 
-class NoIDCreated(Exception):
+class OutputPathMissing(Exception):
     pass

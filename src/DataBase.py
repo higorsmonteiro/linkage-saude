@@ -4,15 +4,13 @@
 
     Common behaviors:
         - Validate database. 
-        - Create unique identifier (ID).
+        - Create a unique identifier (ID).
         - Provide a dictionary to the codification.
-        - Process essential fields for deduplication and linkage tasks.  
 '''
 
 # --> lib 
 import pandera
 import pandas as pd
-import numpy as np
 from collections import defaultdict
 from pandera import DataFrameSchema, Column
 
@@ -50,6 +48,10 @@ class DataBase:
     def data(self, x):
         raise AttributeError("Not possible to change this attribute.")
 
+
+'''
+    # ----- SINAN data object ----- #
+'''
 class DataSinan(DataBase):
     db_type = "SINAN"
 
@@ -67,16 +69,16 @@ class DataSinan(DataBase):
         # Create validation patterns 
         schema_dates_1 = DataFrameSchema(
             {
-                'DT_NOTIFIC': Column('datetime64[ns]', coerce=True, nullable=True),
-                'DT_SIN_PRI': Column('datetime64[ns]', coerce=True, nullable=True),
-                'DT_NASC': Column('datetime64[ns]', coerce=True, nullable=True),
+                'DT_NOTIFIC': Column('datetime64[ns]', coerce=False, nullable=True),
+                'DT_SIN_PRI': Column('datetime64[ns]', coerce=False, nullable=True),
+                'DT_NASC': Column('datetime64[ns]', coerce=False, nullable=True),
             }, strict=False, coerce=False
         )
         schema_dates_2 = DataFrameSchema(
             {
-                'DT_NOTIFIC': Column(object, coerce=True, nullable=True),
-                'DT_SIN_PRI': Column(object, coerce=True, nullable=True),
-                'DT_NASC': Column(object, coerce=True, nullable=True),
+                'DT_NOTIFIC': Column(object, coerce=False, nullable=True),
+                'DT_SIN_PRI': Column(object, coerce=False, nullable=True),
+                'DT_NASC': Column(object, coerce=False, nullable=True),
             }, strict=False, coerce=False
         )
         
@@ -126,6 +128,8 @@ class DataSinan(DataBase):
                 schema_dates_2.validate(self._raw_data)
                 # -- Covert object columns
                 self._raw_data["DT_NOTIFIC"] = pd.to_datetime(self._raw_data["DT_NOTIFIC"])
+                self._raw_data["DT_SIN_PRI"] = pd.to_datetime(self._raw_data["DT_SIN_PRI"])
+                self._raw_data["DT_NASC"] = pd.to_datetime(self._raw_data["DT_NASC"])
                 self.validated = True
             except (pandera.errors.SchemaError, pandera.errors.SchemaErrors):
                 pandera.errors.SchemaError("Essential date columns are neither date nor object format")
@@ -151,42 +155,103 @@ class DataSinan(DataBase):
         self._raw_data = self._raw_data.drop("DT_NOTIFIC_FMT", axis=1)
         self.has_id = True
 
-    def process(self):
+
+'''
+    # ----- GAL data object ----- #
+'''
+class DataGal(DataBase):
+    db_type="GAL"
+
+    def validate_schema(self):
+        '''Define the validations for the GAL database.
+
+            Args:
+            --------
+                None.
+
         '''
+        # -- Columns to not validate because they are empty
+        dont_validate = defaultdict(lambda: True, zip(self.empty_columns, [ False for n in self.empty_columns]))
+        # -- All columns set to uppercase.
+        self._raw_data.columns = [ name.upper() for name in self._raw_data.columns ]
         
+        # Create validation patterns 
+        schema_dates_1 = DataFrameSchema(
+            {
+                'DATA DE NASCIMENTO': Column('datetime64[ns]', coerce=False, nullable=True),
+                'DATA DE CADASTRO': Column('datetime64[ns]', coerce=False, nullable=True),
+                'DATA DA SOLICITAÇÃO': Column('datetime64[ns]', coerce=False, nullable=True),
+            }, strict=False, coerce=False
+        )
+        schema_dates_2 = DataFrameSchema(
+            {
+                'DATA DE NASCIMENTO': Column(object, coerce=False, nullable=True),
+                'DATA DE CADASTRO': Column(object, coerce=False, nullable=True),
+                'DATA DA SOLICITAÇÃO': Column(object, coerce=False, nullable=True),
+            }, strict=False, coerce=False
+        )
+        
+        schema_object = DataFrameSchema(
+            {
+                'REQUISIÇÃO': Column(object, nullable=True, required=True),
+                'CNES LABORATÓRIO DE CADASTRO': Column(object, nullable=True, required=True),
+                'CNES UNIDADE SOLICITANTE': Column(object, nullable=True, required=True),
+                'IBGE MUNICÍPIO SOLICITANTE': Column(object, nullable=True, required=True),
+                'MUNICIPIO DE RESIDÊNCIA': Column(object, nullable=True, required=True),
+                'REQUISIÇÃO CORRELATIVO (S/N)': Column(object, nullable=True, required=dont_validate['REQUISIÇÃO CORRELATIVO (S/N)']),
+                'PACIENTE': Column(object, nullable=True, required=dont_validate['PACIENTE']),
+                'NOME DA MÃE': Column(object, nullable=True, required=dont_validate['NOME DA MÃE']),
+                'SEXO': Column(object, nullable=True, required=dont_validate['SEXO']),
+            }, strict=False, coerce=False
+        )
+        
+        # Validations
+        # -- Validation 1: Date columns
+        try:
+            schema_dates_1.validate(self._raw_data)
+            self.validated = True
+        except (pandera.errors.SchemaError, pandera.errors.SchemaErrors):
+            try:
+                schema_dates_2.validate(self._raw_data)
+                # -- Covert object columns
+                self._raw_data["DATA DE NASCIMENTO"] = pd.to_datetime(self._raw_data["DATA DE NASCIMENTO"])
+                self._raw_data["DATA DE CADASTRO"] = pd.to_datetime(self._raw_data["DATA DE CADASTRO"])
+                self._raw_data["DATA DA SOLICITAÇÃO"] = pd.to_datetime(self._raw_data["DATA DA SOLICITAÇÃO"])
+                self.validated = True
+            except (pandera.errors.SchemaError, pandera.errors.SchemaErrors):
+                pandera.errors.SchemaError("Essential date columns are neither date nor object format")
+
+        # -- Validation 2: Essential GAL columns (original data must be preserved => object columns)
+        try:
+            schema_object.validate(self._raw_data.dropna(axis=1, how='all'))
+            self.validated = True
+        except (pandera.errors.SchemaError, pandera.errors.SchemaErrors) as err:
+            print(err.args)
+
+    def create_id(self):
         '''
-        if "ID_GEO" not in self._data.columns:
-            raise NoIDCreated()
+            For GAL database, an unique ID generated from the original fields is not straightforward due to the 
+            nature of the notification process in the system. An exam requisition (one single number) can trigger
+            several samples and exams for a single person. Therefore, we create two IDs, one ('GAL_ID') to highlight 
+            the notifications inside the whole database, the other ('UNIQUE_ID') to single out each notifications 
+            existent in the specific file provided for analysis.
 
-        self._data["sexo"] = self._raw_data["CS_SEXO"].apply(lambda x: x.upper().strip() if pd.notna(x) else np.nan)
-        self._data["dt_nasc"] = self._raw_data["DT_NASC"].apply(lambda x: pd.to_datetime(x, format="%Y-%m-%d", errors="coerce"))
+            Args:
+            -----
+                None.
+        '''
+        self._raw_data["DATA DA SOLICITAÇÃO_FMT"] = self._raw_data["DATA DA SOLICITAÇÃO"].apply(lambda x: f"{x.day:2.0f}{x.month:2.0f}{x.year}".replace(" ", "0"))
+        self._raw_data["IBGE MUNICÍPIO SOLICITANTE"] = self._raw_data["IBGE MUNICÍPIO SOLICITANTE"].apply(lambda x: f"{x}")
+        self._raw_data["GAL_ID"] = self._raw_data["REQUISIÇÃO"]+self._raw_data["DATA DA SOLICITAÇÃO_FMT"]+self._raw_data["CNES UNIDADE SOLICITANTE"]+\
+                                   self._raw_data["IBGE MUNICÍPIO SOLICITANTE"]
+        self._raw_data["UNIQUE_ID"] = self._raw_data["GAL_ID"]+[ f"{n:8.0f}".replace(" ", "0") for n in range(self._raw_data.shape[0]) ] 
 
-        self._data["nascimento_dia"] = self._data["dt_nasc"].apply(lambda x: x.day if pd.notna(x) else np.nan)
-        self._data["nascimento_mes"] = self._data["dt_nasc"].apply(lambda x: x.month if pd.notna(x) else np.nan)
-        self._data["nascimento_ano"] = self._data["dt_nasc"].apply(lambda x: x.year if pd.notna(x) else np.nan)
-        self._data["cns"] = self._raw_data["ID_CNS_SUS"].apply(lambda x: x if pd.notna(x) else np.nan)
-        self._data["cep"] = self._raw_data["NU_CEP"].apply(lambda x: x if pd.notna(x) else np.nan)
+        self._data = self._raw_data[["GAL_ID", "UNIQUE_ID"]].copy()
+        self._raw_data = self._raw_data.drop("DATA DA SOLICITAÇÃO_FMT", axis=1)
+        self.has_id = True
 
-        self._data["nome"] = self._raw_data["NM_PACIENT"].apply(lambda x: x.upper().strip() if pd.notna(x) else np.nan)
-        self._data["nome_mae"] = self._raw_data["NM_MAE_PAC"].apply(lambda x: x.upper().strip() if pd.notna(x) else np.nan)
-
-        self._data["nome_mae"] = self._data["nome_mae"].apply(lambda x: utils.replace_string(x, sep=" ") if pd.notna(x) else np.nan)
-        self._data["nome"] = self._data["nome"].apply(lambda x: utils.replace_string(x, sep=" ") if pd.notna(x) else np.nan)
-
-        self._data["primeiro_nome_mae"] = self._data["nome_mae"].apply(lambda x: x.split(" ")[0] if pd.notna(x) else np.nan )
-        self._data["segundo_nome_mae"] = self._data["nome_mae"].apply(lambda x: x.split(" ")[1] if pd.notna(x) and len(x.split(" "))>1 else np.nan )
-        self._data["complemento_nome_mae"] = self._data["nome_mae"].apply(lambda x: ' '.join(x.split(" ")[2:]) if pd.notna(x) and len(x.split(" "))>2 else np.nan )
-
-        self._data["primeiro_nome"] = self._data["nome"].apply(lambda x: x.split(" ")[0] if pd.notna(x) else np.nan )
-        self._data["segundo_nome"] = self._data["nome"].apply(lambda x: x.split(" ")[1] if pd.notna(x) and len(x.split(" "))>1 else np.nan )
-        self._data["complemento_nome"] = self._data["nome"].apply(lambda x: ' '.join(x.split(" ")[2:]) if pd.notna(x) and len(x.split(" "))>2 else np.nan )
- 
-        # --> Consolidate BAIRROS
-        self._data["bairro"] = self._raw_data["NM_BAIRRO"].apply(lambda x: x.upper().strip() if pd.notna(x) else np.nan)
-        self._data["bairro"] = self._data["bairro"].apply(lambda x: utils.replace_string(x, sep=" ") if pd.notna(x) else np.nan)
-
-        ## --> FONETICA for blocking
-        self._data["FONETICA_N"] = self._data["nome"].apply(lambda x: f"{x.split(' ')[0]}{x.split(' ')[-1]}" if pd.notna(x) else np.nan)
-
+'''
+    # ----- CUSTOM data object ----- #
+'''
 class DataExtra(DataBase):
     db_type = ""

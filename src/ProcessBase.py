@@ -1,120 +1,66 @@
+# -*- coding: utf-8 -*- 
+# Author: Higor S. Monteiro
+
 '''
-    NOTE: Maybe 'ProcessBase' does not need children for specific behavior of the type of database.
+    Create the general class able to handle universal processing tasks. 
+
+    Objective: 
+        Define I/O tasks to this general class. Thereafter, we should define 
+        specific children classes for any disease of interest, such as: DENGUE,
+        CHIKUNGUNYA, SARAMPO, etc. Children classes should be created and updated
+        as long as demands are generated (or outbreaks of new diseases occur). 
+
+    Specific DEV tasks:
+        1 - Robust reading methods for the common supported extensions. DBFs files
+            are harder to deal with in some circumstances (e. g. Congenital Syphilis). 
+        2 - Robust writing methods to stable formats. Writing methods should be 
+            available during different stages of processing.
+        3 - Decide which processing tasks should be either in the parent or child classes.   
 '''
-from src.ReadBase import *
-from src.DataBase import *
-from src.CustomExceptions import *
 
 import numpy as np
-from pandera import Column, DataFrameSchema
-import lib.database_utils as utils
+import pandas as pd
+import lib.utils as utils
+from src.CustomExceptions import *
 
 class ProcessBase:
-    def __init__(self, data) -> None:
+    def __init__(self, DataObject) -> None:
         '''
         
         '''
-        self._raw_data = data.copy()
-        self.data = None
-        self.data_object = None
+        self.data_object = DataObject
+
+        # -- Check validation and ID of the data object parsed.
+        if not self.data_object.has_id or not self.data_object.validated:
+            raise UniqueIdentifierMissing("No Unique Identifier and/or Data not validated.")
+
+        self._raw_data = self.data_object._raw_data
+        self._data = self.data_object._data
 
     @property
     def raw_data(self):
-        '''
-            Getter of raw_data
-        '''
-        if self.data_object is not None:
-            self._raw_data = self.data_object.raw_data
         return self._raw_data
 
     @raw_data.setter
-    def raw_data(self, value):
-        '''
-            Setter of raw_data (not mutable from outside class)
-        '''
-        raise AttributeError("No possible to change this attribute.")
+    def raw_data(self, x):
+        raise AttributeError("Not possible to change this attribute.")
 
     @property
-    def fmt_data(self):
-        '''
-            Getter of formatted data
-        '''
-        if self.data_object is None:
-            return self.data
-        return self.data_object.data
+    def data(self):
+        return self._data
 
-    # --> To test if **kwargs works (it does!)
-    #def read_file(self, **kwargs):
-    #    '''
-    #        Arguments parsed are the same of the base function used 
-    #        depending on the file extension:
-    #            - Excel: pandas.read_excel
-    #            - DBF: simpledbf.Dbf5
-    #            - CSV: pandas.read_csv
-    #    '''
-    #    self._raw_data = self.reader.read_file(**kwargs)
+    @data.setter
+    def data(self, x):
+        raise AttributeError("Not possible to change this attribute.")
 
-    def export(self, **kwargs):
+    def process(self):
         '''
         
         '''
-        pass
-
-    def initilize(self, DBTYPE=DataExtra):
-        # 'DataExtra' has no specific behaviour, but we can create on the fly for any new behavior
-        self.data_object = DBTYPE(self._raw_data)
-
-
-# ----------- SPECIAL INITIALIZATION: DATA SOURCE DEPENDENT -----------
-class ProcessSinan(ProcessBase):
-    def initilize(self):
-        self.data_object = DataSinan(self._raw_data)
-
-    def data_validation(self):
-        '''
-            All validations regarding SINAN.
-        '''
-        if self._raw_data is None:
-            raise NoDataLoaded("There is no data found within the class.")
-
-        schema = DataFrameSchema(
-            {
-                "NU_NOTIFIC": Column(str, required=True),
-                "ID_AGRAVO": Column(str, required=True),
-                "ID_MUNICIP": Column(str, required=True),
-                "DT_NOTIFIC": Column(str, required=True),
-            },
-            strict=False, coerce=False
-        )
-
-        # --> VALIDATIONS
-        schema.validate(self._raw_data)
-        
-
-# ----------------------------------------------------------------------
-class ProcessSivep(ProcessBase):
-    def initilize(self):
+        return None
+    
+    def grouping_deduple(self, field_id, pairs, cols=None):
         '''
         
         '''
-        self.data_object = DataSivep(self._raw_data)
-
-class ProcessSim(ProcessBase):
-    def initilize(self):
-        '''
-        
-        '''
-        self.data_object = DataSim(self._raw_data)
-
-class ProcessSinasc(ProcessBase):
-    def initilize(self):
-        '''
-        
-        '''
-        self.data_object = DataSinasc(self._raw_data)
-
-# --> Every time we deal with a new data source, we create a new class for initialization
-class ProcessExtra(ProcessBase):
-    pass
-
-
+        return None
