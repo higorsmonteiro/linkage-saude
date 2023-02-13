@@ -3,16 +3,19 @@
     based on processed columns.
 
     Author: Higor S. Monteiro
-    Date: 2022-06-08
+    Update date: 2023-02-09
 '''
 import os
 import csv
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
-from tabulate import tabulate
+import seaborn as sns
+import matplotlib.pyplot as plt
+
 import recordlinkage
 from recordlinkage.index import SortedNeighbourhood
+
+from tabulate import tabulate
 from src.CustomExceptions import *
 
 
@@ -39,12 +42,12 @@ class Deduple:
         if self.env_folder is None:
             raise OutputPathMissing("")
 
+        self.main_df = self.main_df.set_index(field_id)
         if not os.path.isdir(self.env_folder):
             os.mkdir(self.env_folder)
 
         self.linkage_vars = None
-        self.compare_cl = None
-        self.features = None
+        self.compare_cl, self._features, self.sum_rules = None, None, None
 
         self.pairs_left = []
         self.pairs_right = []
@@ -52,52 +55,74 @@ class Deduple:
         self.pot_pairs_right = []
         self.evaluation_pot_pairs = []
 
-    def set_linkage(self, linkage_vars, map_compare, map_threshold,
-                        string_method="jarowinkler"):
+    @property
+    def features(self):
+        if self._features is not None:
+            return self._features
+
+    @property
+    def scores(self):
+        if self._features is not None:
+            return self._features["SOMA FINAL"].value_counts().sort_index()
+
+    @features.setter
+    def features(self):
+        raise AttributeError("Not possible to change this attribute from outside")
+
+    def set_linkage(self, compare_rules, sum_rules, string_method="jarowinkler", numeric_method="linear"):
         '''
             Description.
 
             Args:
             -----
-                linkage_vars:
-                    List of strings. 
-                map_compare:
-                    Dictionary. Keys are names in 'linkage_vars' while values are either
-                    'exact' or 'string' to signal which type of comparison to use.
-                map_threshold:
-                    Dictionary. Keys are names in  'linkage_vars' while values are float
-                    values ranging from 0.0 to 1.0 to signal the threshold to be used in
-                    string comparison between fields. For exact comparison, values are None.
+                compare_rules:
+                    Dictionary. Keys of the dictionary represent the linkage variables to be used
+                    in the comparison. Each key holds a list of values containing at least a single
+                    element. The first element should be always the type of comparison to be 
+                    performed for the given field: {'exact', 'string'}. For 'string' comparison,
+                    the second element of the list should be the threshold (0.0 to 1.0) for the
+                    comparison method. For 'exact' comparison, no further values are needed.
+                **kwargs:
+                    Aside from the 'threshold' argument, arguments are the same as the comparison
+                    methods from recordlinkage.Compare class. 
             Return:
                 None.
         '''
-        self.linkage_vars = linkage_vars
+        self.sum_rules = sum_rules
+        self.linkage_vars = list(compare_rules.keys())
 
-        # -- Determine the type of comparison for each pair of fields
+        # -- Settings for comparison between fields
         self.compare_cl = recordlinkage.Compare()
-        for item in map_compare.items():
-            # --> Define the type of comparison between fields
-            key, value = item
-            if value=="exact":
+        for map_item in compare_rules.items():
+            key, values = map_item
+            if values[0]=="exact":
                 self.compare_cl.exact(key, key, label=key)
-            elif value=="string":
-                self.compare_cl.string(key, key, label=key, method=string_method, threshold=map_threshold[key])
+            elif values[0]=="string":
+                self.compare_cl.string(key, key, label=key, threshold=values[1], method=string_method)
+                #self.compare_cl.string(key, key, label=key, method=string_method)
+            elif values[0]=="date": 
+                self.compare_cl.date(key, key, label=key)
+            elif values[0]=="numeric": # can be used for timestamps
+                self.compare_cl.numeric(key, key, label=key, method=numeric_method)
+            elif values[0]=="geo":
+                pass
             else:
                 pass
 
     # TO DO: DEDUPLE OVER CHUNKSIZES (FOR VERY LARGE DATASETS)
-    def perform_linkage(self, blocking_var, window=1, output_fname="feature_pairs"):
+    def perform_linkage(self, blocking_var, window=1, output_fname="feature_pairs", threshold=None):
         '''
-            After the linkage settings are defined, set blocking and perform the linkage.
+            After setting the properties of the linkage, blocking is defined and the linkage is performed.
 
             Args:
+            -----
                 blocking_var:
-                    String. Field name regarding the blocking variable for the linkage.
+                    String. Name of the field regarding the blocking variable for the linkage.
                 window:
                     Odd Integer. Window parameter for the sorted neighborhood blocking algorithm. 
                     window equal one means exact blocking.
-                chunksize:
-                    Integer. Size of each partition of the right database for partitioned linkage 
+                chunksize: NOT IMPLEMENTED.
+                    Integer. Size of each partition of the right (BOTH!) database for partitioned linkage 
                     (used for large databases).
         '''
         # --> Define blocking mechanism
@@ -107,10 +132,51 @@ class Deduple:
         # --> Create and compare pairs
         candidate_links = indexer.index(self.main_df)
         print(f"Number of pairs: {len(candidate_links)}")
-        self.features = self.compare_cl.compute(candidate_links, self.main_df)
+        self._features = self.compare_cl.compute(candidate_links, self.main_df)
 
         if self.env_folder is not None:
-            self.features.to_parquet(os.path.join(self.env_folder, f"{output_fname}.parquet"))
+            self._features.to_parquet(os.path.join(self.env_folder, f"{output_fname}.parquet"))
+
+        if threshold is not None and threshold<=1.0:
+            self._features[self._features<threshold] = 0.0
+
+        # apply sum rules
+        for item in self.sum_rules.items():
+            key, value = item
+            self._features[key] = self._features[value].sum(axis=1)
+
+    def summary_score(self, arr, bins, range_certain, range_potential):
+        '''
+            ...
+        '''
+        fig, ax = plt.subplots(1, figsize=(7,4.5))
+        s = sns.histplot(arr, bins=bins, color="tab:orange", ax=ax)
+
+        ax.spines['top'].set_color('none')
+        ax.spines['right'].set_color('none')
+        ax.spines['left'].set_position(('outward', 7))
+        ax.spines['bottom'].set_position(('outward', 7))
+
+        ax.spines["left"].set_linewidth(1.5)
+        ax.spines["bottom"].set_linewidth(1.5)
+        ax.spines["top"].set_linewidth(1.5)
+        ax.spines["right"].set_linewidth(1.5)
+
+        ax.tick_params(width=1.5, labelsize=12)
+        ax.set_ylabel("Frequência", weight="bold", fontsize=14, labelpad=8)
+        ax.set_xlabel("Score", weight="bold", fontsize=13)
+        ax.grid(alpha=0.2)
+
+        freq, bins = np.histogram(arr, bins=bins)
+        ax.fill_between(range_potential, y1=max(freq)+10, color="tab:orange", alpha=0.2)
+        ax.fill_between(range_certain, y1=max(freq)+10, color="tab:blue", alpha=0.2)
+        ax.set_ylim(0, max(freq)+10)
+
+        ax.set_xticks(bins)
+        ax.set_xticklabels([f"{n:.2f}" for n in bins], rotation=35)
+        return {"FIG": fig, "AXIS": ax, "FREQUENCY AND BINS": (freq, bins)}        
+        
+
 
 class DedupleOld:
     def __init__(self, main_df, env_folder=None) -> None:
