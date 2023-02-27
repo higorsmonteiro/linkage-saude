@@ -9,3 +9,6 @@ class UniqueIdentifierMissing(Exception):
 
 class OutputPathMissing(Exception):
     pass
+
+class AnnotationError(Exception):
+    pass

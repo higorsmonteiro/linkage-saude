@@ -55,6 +55,8 @@ class ProcessGAL:
         
         '''
         self._data["nome"] = self._raw_data["PACIENTE"].apply(lambda x: x.upper().strip() if pd.notna(x) else np.nan)
+        self._data["sexo"] = self._raw_data["SEXO"].fillna("I").map({"MASCULINO": "M", "FEMININO": "F", "IGNORADO": "I"})
+        self._data["cns"] = self._raw_data["CNS DO PACIENTE"].copy()
 
         self._data["nome_mae"] = self._raw_data["NOME DA MÃE"].apply(lambda x: utils.replace_string(x, sep=" ") if pd.notna(x) else np.nan)
         self._data["nome"] = self._data["nome"].apply(lambda x: utils.replace_string(x, sep=" ") if pd.notna(x) else np.nan)
