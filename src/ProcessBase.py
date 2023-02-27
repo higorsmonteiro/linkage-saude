@@ -57,10 +57,4 @@ class ProcessBase:
         '''
         
         '''
-        return None
-    
-    def grouping_deduple(self, field_id, pairs, cols=None):
-        '''
-        
-        '''
-        return None
+        pass
