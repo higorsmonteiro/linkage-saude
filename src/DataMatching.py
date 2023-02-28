@@ -7,13 +7,15 @@
 '''
 import os
 import json
+import random
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
-
 import recordlinkage
 from recordlinkage.index import SortedNeighbourhood
+
+import lib.data_matching_utils as matching_utils
 from src.CustomExceptions import *
 
 class DataMatching:
@@ -73,43 +75,32 @@ class DataMatching:
                 pass
             else:
                 pass
-
-    def summary_score(self, arr, bins, range_certain, range_potential, scale="linear"):
+    
+    def score_summary(self, score_arr, bins, range_certain, range_potential, scale="linear"):
         '''
-            ...
+            Plot a distribution of the scores resulted from the data matching process.
+
+            Args:
+            -----
+                score_arr:
+                    np.array or pd.Series. List of scores for each pair compared during
+                    the matching process. When a pandas Series is parsed, the index is 
+                    expected to be a MultiIndex containing the IDs of the records compared.
+                bins:
+                    list. Custom histogram bins.
+                range_certain:
+                    list. List of size two containing the lower and upper bound of the score
+                    range of the records considered to be matched for certain.
+                range_potential:
+                    list. List of size two containing the lower and upper bound of the score
+                    range of the records considered to be potential matching.
+                scale:
+                    String. {'linear', 'log', ...}. Scale of the y-axis.
+
+            Return:
+            -------
         '''
-        fig, ax = plt.subplots(1, figsize=(7,4.5))
-        s = sns.histplot(arr, bins=bins, color="#ff7f50", ax=ax)
-
-        ax.spines['top'].set_color('none')
-        ax.spines['right'].set_color('none')
-        ax.spines['left'].set_position(('outward', 7))
-        ax.spines['bottom'].set_position(('outward', 7))
-
-        ax.spines["left"].set_linewidth(1.5)
-        ax.spines["bottom"].set_linewidth(1.5)
-        ax.spines["top"].set_linewidth(1.5)
-        ax.spines["right"].set_linewidth(1.5)
-
-        ax.tick_params(width=1.5, labelsize=11)
-        ax.set_ylabel("Frequência", weight="bold", fontsize=14, labelpad=8)
-        ax.set_xlabel("Score", weight="bold", fontsize=13)
-        ax.grid(alpha=0.2)
-
-        freq, bins = np.histogram(arr, bins=bins)
-        ax.fill_between(range_potential, y1=max(freq)+10, color="tab:orange", alpha=0.2)
-        ax.fill_between(range_certain, y1=max(freq)+10, color="tab:blue", alpha=0.2)
-
-        ncertain = arr[(arr>=range_certain[0]) & (arr<range_certain[1])].shape[0]
-        npotential = arr[(arr>=range_potential[0]) & (arr<range_potential[1])].shape[0]
-        ndiff = arr[(arr<range_potential[0])].shape[0]
-
-        ax.set_xticks(bins)
-        ax.set_xticklabels([f"{n:.2f}" for n in bins], rotation=35)
-        ax.set_yscale(scale)
-        return {"FIG": fig, "AXIS": ax, "FREQUENCY AND BINS": (freq, bins), 
-                "# IGUAIS": ncertain, "# POTENCIAIS": npotential, "# DIFERENTES": ndiff }
-
+        return matching_utils.score_summary(score_arr, bins, range_certain, range_potential, scale)
     
 # -->
 # ------> DEDUPLICATION
@@ -181,15 +172,32 @@ class Deduple(DataMatching):
             self._features[key] = self._features[value].sum(axis=1)
 
 
-    def verify_pair_subset(self, subset, random_state=None, cols=None):
+    def verify_pair(self, pairs, cols=None, random_state=None):
         '''
+            Visualization of one of the pairs parsed according to the columns' names given.
+
+            Args:
+            -----
+                pairs:
+                    List. List of 2-tuples containing the pairs parsed.
+                cols:
+                    List of Strings. Names to display when comparing the records.
+                random_state:
+                    Integer. To fix the seed of the display.
+
+        '''
+        if random_state is not None:
+            random.seed(random_state)
         
-        '''
         temp_df = self.main_df
-        index = subset.sample(n=1, random_state=random_state).index 
+        pair = random.choice(pairs)
+        left_index, right_index = pair[0], pair[1]
+
         if cols is not None:
-            return pd.concat([temp_df[cols].loc[index[0][0]], temp_df[cols].loc[index[0][1]]], axis=1)
-        return pd.concat([temp_df.loc[index[0][0]], temp_df.loc[index[0][1]]], axis=1)
+            vis_df = pd.concat( [temp_df[cols].loc[left_index], temp_df[cols].loc[right_index]], axis=1 )
+        else:
+            vis_df = pd.concat( [temp_df.loc[left_index], temp_df.loc[right_index]], axis=1 )
+        return vis_df
 
     def create_annotation(self, certain_pairs, potential_pairs, division=50, cols=None, overwrite=False, certain_duplicate_default=None):
         '''
@@ -389,16 +397,33 @@ class PLinkage(DataMatching):
             key, value = item
             self._features[key] = self._features[value].sum(axis=1)
 
-    def verify_pair_subset(self, subset, random_state=None, left_cols=None, right_cols=None):
+    def verify_pair(self, pairs, left_cols=None, right_cols=None, random_state=None):
         '''
+            Visualization of one of the pairs parsed according to the columns' names given.
+
+            Args:
+            -----
+                pairs:
+                    List. List of 2-tuples containing the pairs parsed.
+                cols:
+                    List of Strings. Names to display when comparing the records.
+                random_state:
+                    Integer. To fix the seed of the display.
+
+        '''
+        if random_state is not None:
+            random.seed(random_state)
         
-        '''
         temp_left_df = self.left_df
         temp_right_df = self.right_df
-        index = subset.sample(n=1, random_state=random_state).index 
+        pair = random.choice(pairs)
+        left_index, right_index = pair[0], pair[1]
+
         if left_cols is not None and right_cols is not None:
-            return pd.concat([temp_left_df[left_cols].loc[index[0][0]], temp_right_df[right_cols].loc[index[0][1]]], axis=1)
-        return pd.concat([temp_left_df.loc[index[0][0]], temp_right_df.loc[index[0][1]]], axis=1)
+            vis_df = pd.concat( [temp_left_df[left_cols].loc[left_index], temp_right_df[right_cols].loc[right_index]], axis=1 )
+        else:
+            vis_df = pd.concat( [temp_left_df.loc[left_index], temp_right_df.loc[right_index]], axis=1 )
+        return vis_df
 
     def create_annotation(self, certain_pairs, potential_pairs, division=50, left_cols=None, right_cols=None, overwrite=False):
         '''
