@@ -55,6 +55,6 @@ class ProcessBase:
 
     def process(self):
         '''
-        
+            Method to handle transformation steps specific to the database.
         '''
         pass
