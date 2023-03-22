@@ -3,15 +3,13 @@
     based on processed columns.
 
     Author: Higor S. Monteiro
-    Date: 2023-02-06
+    Email: higormonteiros@gmail.com
 '''
 import os
 import json
 import random
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 import recordlinkage
 from recordlinkage.index import SortedNeighbourhood
 
@@ -184,6 +182,10 @@ class Deduple(DataMatching):
                     List of Strings. Names to display when comparing the records.
                 random_state:
                     Integer. To fix the seed of the display.
+            Return:
+            -------
+                vis_df:
+                    pandas.DataFrame.
 
         '''
         if random_state is not None:
@@ -220,12 +222,13 @@ class Deduple(DataMatching):
 
         temp_df = self.main_df
         # --> POTENTIAL PAIRS (SEPARATE IN DIFFERENT FILES)
-        splitted_pot = np.split(potential_pairs, np.arange(division, potential_pairs.shape[0]+1, division))
+        #splitted_pot = np.split(potential_pairs, np.arange(division, potential_pairs.shape[0]+1, division))
+        splitted_pot = [ potential_pairs[i:i+division] for i in range(0, len(potential_pairs)+1, division) ]
         pot_list = []
         for n in range(len(splitted_pot)):
             current_pot_list = []
-            for row in splitted_pot[n].iterrows():
-                pair = row[0]
+            for row in splitted_pot[n]:
+                pair = row
                 if cols is not None:
                     left_pair = json.loads(temp_df[cols].loc[pair[0]].to_json())
                     right_pair = json.loads(temp_df[cols].loc[pair[1]].to_json())
@@ -242,8 +245,8 @@ class Deduple(DataMatching):
             pot_list.append(current_pot_list)
         # --> CERTAIN PAIRS (ONE SINGLE FILE)
         certain_list = []
-        for row in certain_pairs.iterrows():
-            pair = row[0]
+        for row in certain_pairs:
+            pair = row
             if cols is not None:
                 left_pair = json.loads(temp_df[cols].loc[pair[0]].to_json())
                 right_pair = json.loads(temp_df[cols].loc[pair[1]].to_json())

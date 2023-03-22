@@ -65,7 +65,7 @@ class ProcessSinan(ProcessBase):
  
         # --> Consolidate BAIRROS
         self._data["bairro"] = self._raw_data["NM_BAIRRO"].apply(lambda x: x.upper().strip() if pd.notna(x) else np.nan)
-        self._data["bairro"] = self._data["bairro"].apply(lambda x: utils.replace_string(x, sep=" ") if pd.notna(x) else np.nan)
+        self._data["bairro"] = self._data["bairro"].apply(lambda x: utils.uniformize_name(x, sep=" ") if pd.notna(x) else np.nan)
 
         self._data = self._data.drop(["dt_nasc", "dt_notific"], axis=1)
         self._data["evolucao"] = self._raw_data["EVOLUCAO"].copy()
@@ -85,13 +85,13 @@ class ProcessGAL(ProcessBase):
         
         '''
         self._data["nome"] = self._raw_data["PACIENTE"].apply(lambda x: x.upper().strip() if pd.notna(x) else np.nan)
-        self._data["nome_mae"] = self._raw_data["NOME DA MÃE"].apply(lambda x: utils.replace_string(x, sep=" ") if pd.notna(x) else np.nan)
+        self._data["nome_mae"] = self._raw_data["NOME DA MÃE"].apply(lambda x: utils.uniformize_name(x, sep=" ") if pd.notna(x) else np.nan)
         self._data["sexo"] = self._raw_data["SEXO"].fillna("I").map({"MASCULINO": "M", "FEMININO": "F", "IGNORADO": "I"})
         self._data["cns"] = self._raw_data["CNS DO PACIENTE"].copy()
         self._data["nascimento"] = self._raw_data["DATA DE NASCIMENTO"].apply(lambda x: f"{x.day:2.0f}/{x.month:2.0f}/{x.year:2.0f}".replace(" ", "0") if pd.notna(x) else np.nan)
         self._data["solicitacao"] = self._raw_data["DATA DA SOLICITAÇÃO"].apply(lambda x: f"{x.day:2.0f}/{x.month:2.0f}/{x.year:2.0f}".replace(" ", "0") if pd.notna(x) else np.nan)
         
-        self._data["nome"] = self._data["nome"].apply(lambda x: utils.replace_string(x, sep=" ") if pd.notna(x) else np.nan)
+        self._data["nome"] = self._data["nome"].apply(lambda x: utils.uniformize_name(x, sep=" ") if pd.notna(x) else np.nan)
 
         self._data["nascimento_dia"] = self._raw_data["DATA DE NASCIMENTO"].apply(lambda x: x.day if pd.notna(x) else np.nan)
         self._data["nascimento_mes"] = self._raw_data["DATA DE NASCIMENTO"].apply(lambda x: x.month if pd.notna(x) else np.nan)
