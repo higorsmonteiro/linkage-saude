@@ -8,17 +8,15 @@
         - Validate database. 
         - Create a unique identifier (ID).
         - Provide a dictionary to the codification.
-'''
+''' 
 
-# --> lib 
 import pandera
 import pandas as pd
 from collections import defaultdict
 from pandera import DataFrameSchema, Column
 
 # ----> custom
-import lib.utils as utils
-from src.CustomExceptions import *
+from exceptions import *
 
 # --> class definitions
 class DataBase:

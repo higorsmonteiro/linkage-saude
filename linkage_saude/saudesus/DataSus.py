@@ -8,48 +8,16 @@
         - Validate database. 
         - Create a unique identifier (ID).
         - Provide a dictionary to the codification.
-'''
+''' 
 
-# --> lib 
 import pandera
 import pandas as pd
 from collections import defaultdict
 from pandera import DataFrameSchema, Column
 
 # ----> custom
-import lib.utils as utils
-from src.CustomExceptions import *
-
-# --> class definitions
-class DataBase:
-    def __init__(self, data) -> None:
-        self._raw_data = data.copy()
-        self._data = None
-
-        # -- Get empty columns
-        cols_temp = self._raw_data.dropna(axis=1, how='all').columns
-        self.empty_columns = [ x for x in self._raw_data if x not in cols_temp ]
-
-        # -- Id created
-        self.has_id = False
-        self.validated = False
-
-    @property
-    def raw_data(self):
-        return self._raw_data
-
-    @raw_data.setter
-    def raw_data(self, x):
-        raise AttributeError("Not possible to change this attribute.")
-
-    @property
-    def data(self):
-        return self._data
-
-    @data.setter
-    def data(self, x):
-        raise AttributeError("Not possible to change this attribute.")
-
+from exceptions import *
+from base.DataBase import DataBase
 
 '''
     # ----- SINAN data object ----- #

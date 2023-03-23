@@ -1,14 +1,10 @@
 # -*- coding: utf-8 -*- 
-# Author: Higor S. Monteiro
 
 '''
     Create the general class able to handle universal processing tasks. 
 '''
 
-import numpy as np
-import pandas as pd
-import lib.utils as utils
-from src.CustomExceptions import *
+from exceptions import *
 
 class ProcessBase:
     def __init__(self, DataObject) -> None:
