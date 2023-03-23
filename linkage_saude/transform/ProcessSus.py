@@ -7,9 +7,9 @@
 import numpy as np
 import pandas as pd
 
-from exceptions import *
-import utils.general as general_utils
-from base.ProcessBase import ProcessBase
+from linkage_saude.exceptions import *
+import linkage_saude.utils.general as general_utils
+from linkage_saude.transform.ProcessBase import ProcessBase
 
 '''
     -------> SINAN
@@ -62,7 +62,7 @@ class ProcessSinan(ProcessBase):
 '''
     ------> GAL
 '''
-class ProcessGAL(ProcessBase):
+class ProcessGal(ProcessBase):
     db_type = "GAL"
 
     def process(self):

@@ -16,7 +16,7 @@ from collections import defaultdict
 from pandera import DataFrameSchema, Column
 
 # ----> custom
-from exceptions import *
+from linkage_saude.exceptions import *
 
 # --> class definitions
 class DataBase:

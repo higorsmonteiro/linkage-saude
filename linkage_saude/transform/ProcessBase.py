@@ -4,7 +4,7 @@
     Create the general class able to handle universal processing tasks. 
 '''
 
-from exceptions import *
+from linkage_saude.exceptions import *
 
 class ProcessBase:
     def __init__(self, DataObject) -> None:

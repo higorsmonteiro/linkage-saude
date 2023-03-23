@@ -6,10 +6,9 @@ import random
 import numpy as np
 import pandas as pd
 import recordlinkage
-from recordlinkage.index import SortedNeighbourhood
 
-import utils.matching as matching_utils
-from exceptions import *
+from linkage_saude.exceptions import *
+import linkage_saude.utils.matching as matching_utils
 
 class MatchingBase:
     def __init__(self, left_df, right_df=None, left_id=None, right_id=None, env_folder=None) -> None:

@@ -16,8 +16,8 @@ from collections import defaultdict
 from pandera import DataFrameSchema, Column
 
 # ----> custom
-from exceptions import *
-from base.DataBase import DataBase
+from linkage_saude.exceptions import *
+from linkage_saude.types.DataBase import DataBase
 
 '''
     # ----- SINAN data object ----- #

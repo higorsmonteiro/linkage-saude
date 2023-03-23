@@ -16,10 +16,10 @@ import pandas as pd
 import recordlinkage
 from recordlinkage.index import SortedNeighbourhood
 
-from base import MatchingBase
-import utils.matching as matching_utils
-from exceptions import *
-    
+from linkage_saude.exceptions import *
+from linkage_saude.matching.MatchingBase import MatchingBase
+import linkage_saude.utils.matching as matching_utils
+
 # -->
 # ------> DEDUPLICATION
 # -->
