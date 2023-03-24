@@ -1,11 +1,21 @@
 # -*- coding: utf-8 -*- 
 
+import random
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 from collections import defaultdict
 
 import seaborn as sns
 import matplotlib.pyplot as plt
+
+from linkage_saude.exceptions import *
+
+'''
+    -------------------------------------------------
+    ---------- SUMMARIES AND VISUALIZATION ----------
+    ------------------------------------------------- 
+'''
 
 def score_summary(score_arr, bins, range_certain, range_potential, scale="linear"):
     '''
@@ -66,6 +76,57 @@ def score_summary(score_arr, bins, range_certain, range_potential, scale="linear
             "# IGUAIS": ncertain, "# POTENCIAIS": npotential, "# DIFERENTES": ndiff }
     return info
 
+def show_pair(pairs, left_df, right_df=None, 
+              left_cols=None, right_cols=None, random_state=None):
+    '''
+        Show a random pair of records from the list 'pairs' obtained by the matching.
+
+        Args:
+        -----
+            pairs:
+                List.
+            left_df:
+                pandas.DataFrame.
+            right_df:
+                pandas.DataFrame. Default None.
+            left_cols:
+                List. Default None.
+            right_cols:
+                List. Default None.
+            random_state:
+                Integer. Default None.
+        Return:
+        -------
+            display_df:
+                pandas.DataFrame.
+    '''
+    if random_state is not None:
+        random.seed(random_state)
+
+    pair = random.choice(pairs)
+    left_index, right_index = pair[0], pair[1]
+
+    temp_left = left_df
+    temp_right = right_df
+
+    # --> Verify for columns
+    if left_df is not None and left_cols is None:
+        raise ValueError("Subset of columns' names must be parsed.")
+    if right_df is not None and right_cols is None:
+        raise ValueError("Subset of columns' names must be parsed.")
+
+    if temp_right is None:
+        display_df = pd.concat( [temp_left[left_cols].loc[left_index], temp_left[left_cols].loc[right_index]], axis=1 )
+    else:
+        display_df = pd.concat( [temp_left[left_cols].loc[left_index], temp_right[right_cols].loc[right_index]], axis=1 )
+    return display_df 
+
+
+'''
+    -------------------------------------------------
+    ----------------- OPERATIONAL -------------------
+    ------------------------------------------------- 
+'''
 
 def find_root(index, ptr):
     dummy = index

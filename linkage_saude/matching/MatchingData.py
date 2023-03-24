@@ -10,7 +10,6 @@
 
 import os
 import json
-import random
 import numpy as np
 import pandas as pd
 import recordlinkage
@@ -20,9 +19,7 @@ from linkage_saude.exceptions import *
 from linkage_saude.matching.MatchingBase import MatchingBase
 import linkage_saude.utils.matching as matching_utils
 
-# -->
-# ------> DEDUPLICATION
-# -->
+
 class Deduple(MatchingBase):
 
     # TO DO: DEDUPLE OVER CHUNKSIZES (FOR VERY LARGE DATASETS)
@@ -62,38 +59,6 @@ class Deduple(MatchingBase):
         for item in self.sum_rules.items():
             key, value = item
             self._features[key] = self._features[value].sum(axis=1)
-
-
-    def verify_pair(self, pairs, cols=None, random_state=None):
-        '''
-            Visualization of one of the pairs parsed according to the columns' names given.
-
-            Args:
-            -----
-                pairs:
-                    List. List of 2-tuples containing the pairs parsed.
-                cols:
-                    List of Strings. Names to display when comparing the records.
-                random_state:
-                    Integer. To fix the seed of the display.
-            Return:
-            -------
-                vis_df:
-                    pandas.DataFrame.
-
-        '''
-        if random_state is not None:
-            random.seed(random_state)
-        
-        temp_df = self.left_df
-        pair = random.choice(pairs)
-        left_index, right_index = pair[0], pair[1]
-
-        if cols is not None:
-            vis_df = pd.concat( [temp_df[cols].loc[left_index], temp_df[cols].loc[right_index]], axis=1 )
-        else:
-            vis_df = pd.concat( [temp_df.loc[left_index], temp_df.loc[right_index]], axis=1 )
-        return vis_df
 
     def create_annotation(self, certain_pairs, potential_pairs, division=50, cols=None, overwrite=False, certain_duplicate_default=None):
         '''
@@ -218,9 +183,7 @@ class Deduple(MatchingBase):
         return pd.DataFrame(pairs)
     
 
-# -->
-# ------> PROBABILISTIC LINKAGE
-# -->
+
 class PLinkage(MatchingBase):
 
     # TO DO: LINKAGE OVER CHUNKSIZES (FOR VERY LARGE DATASETS)
@@ -259,34 +222,6 @@ class PLinkage(MatchingBase):
         for item in self.sum_rules.items():
             key, value = item
             self._features[key] = self._features[value].sum(axis=1)
-
-    def verify_pair(self, pairs, left_cols=None, right_cols=None, random_state=None):
-        '''
-            Visualization of one of the pairs parsed according to the columns' names given.
-
-            Args:
-            -----
-                pairs:
-                    List. List of 2-tuples containing the pairs parsed.
-                cols:
-                    List of Strings. Names to display when comparing the records.
-                random_state:
-                    Integer. To fix the seed of the display.
-
-        '''
-        if random_state is not None:
-            random.seed(random_state)
-        
-        temp_left_df = self.left_df
-        temp_right_df = self.right_df
-        pair = random.choice(pairs)
-        left_index, right_index = pair[0], pair[1]
-
-        if left_cols is not None and right_cols is not None:
-            vis_df = pd.concat( [temp_left_df[left_cols].loc[left_index], temp_right_df[right_cols].loc[right_index]], axis=1 )
-        else:
-            vis_df = pd.concat( [temp_left_df.loc[left_index], temp_right_df.loc[right_index]], axis=1 )
-        return vis_df
 
     def create_annotation(self, certain_pairs, potential_pairs, division=50, left_cols=None, right_cols=None, overwrite=False):
         '''

@@ -2,7 +2,6 @@
 
 import os
 import json
-import random
 import numpy as np
 import pandas as pd
 import recordlinkage
@@ -27,6 +26,7 @@ class MatchingBase:
         self.left_df = self.left_df.set_index(self.left_id)
         
         # --> Solve for the right dataframe, if the case
+        self.right_df = None
         if right_df is not None:
             self.right_df = right_df.copy()
             self.right_id = right_id
@@ -51,6 +51,11 @@ class MatchingBase:
     def features(self):
         raise AttributeError("Not possible to change this attribute from outside.")
     
+    '''
+        -------------------------------------------
+        ------------ MATCHING SETTINGS ------------
+        -------------------------------------------
+    '''
     def set_linkage(self, compare_rules, sum_rules, string_method="jarowinkler", numeric_method="linear"):
         '''
             Description.
@@ -90,6 +95,159 @@ class MatchingBase:
                 pass
             else:
                 pass
+
+    def perform_linkage(self):
+        '''
+        
+        '''
+        pass
+
+    '''
+        ------------------------------------------
+        ------------ INPUT AND OUTPUT ------------
+        ------------------------------------------
+    '''
+    def save_pairs(self, positive_pairs, potential_pairs, negative_pairs,  
+                   left_cols=None, right_cols=None, 
+                   division=50, overwrite=False, negative_max=None):
+        '''
+            Save pairs (negative, positive and potential pairs) considering a 
+            format for further annotation.
+
+            Args:
+            -----
+                positive_pairs:
+                    List.
+                potential_pairs:
+                    List.
+                negative_pairs:
+                    List.
+                left_cols:
+                    List. Default None.
+                right_cols:
+                    List. Default None.
+                division:
+                    Integer.
+                overwrite:
+                    Boolean.
+                negative_max:
+                    Integer. Default None.
+            Return:
+            -------
+                None.
+        '''
+        annotation_folder = os.path.join(self.env_folder, "annotation_files")
+        if os.path.isfile(os.path.join(annotation_folder, "POSITIVE_PAIRS.json")) and not overwrite:
+            raise AnnotationError("Overwrite of annotation files not allowed.")
+        
+        temp_left = self.left_df
+        temp_right = self.right_df
+
+
+
+
+    def create_annotation(self, certain_pairs, potential_pairs, division=50, cols=None, overwrite=False, certain_duplicate_default=None):
+        '''
+            Description.
+
+            Args:
+            -----
+                certain_pairs:
+                    List.
+                potential_pairs:
+                    List.
+                division:
+                    Integer.
+                cols:
+                    List.        
+        '''
+        annotation_folder = os.path.join(self.env_folder, "ANNOTATION")
+        if os.path.isfile(os.path.join(annotation_folder, "MATCHED_PAIRS.json")) and not overwrite:
+            raise AnnotationError("Overwrite of annotation files not allowed.")
+
+        temp_df = self.left_df
+        # --> POTENTIAL PAIRS (SEPARATE IN DIFFERENT FILES)
+        #splitted_pot = np.split(potential_pairs, np.arange(division, potential_pairs.shape[0]+1, division))
+        splitted_pot = [ potential_pairs[i:i+division] for i in range(0, len(potential_pairs)+1, division) ]
+        pot_list = []
+        for n in range(len(splitted_pot)):
+            current_pot_list = []
+            for row in splitted_pot[n]:
+                pair = row
+                if cols is not None:
+                    left_pair = json.loads(temp_df[cols].loc[pair[0]].to_json())
+                    right_pair = json.loads(temp_df[cols].loc[pair[1]].to_json())
+                else:
+                    left_pair = json.loads(temp_df.loc[pair[0]].to_json())
+                    right_pair = json.loads(temp_df.loc[pair[1]].to_json())
+                pair_element = {"a": left_pair, "b": right_pair, 
+                                "identifiers": {"a": pair[0], "b": pair[1]}, 
+                                "certain": "no", 
+                                "same person": None,
+                                "duplicate": None,
+                                "keep": "a" }
+                current_pot_list.append(pair_element)
+            pot_list.append(current_pot_list)
+        # --> CERTAIN PAIRS (ONE SINGLE FILE)
+        certain_list = []
+        for row in certain_pairs:
+            pair = row
+            if cols is not None:
+                left_pair = json.loads(temp_df[cols].loc[pair[0]].to_json())
+                right_pair = json.loads(temp_df[cols].loc[pair[1]].to_json())
+            else:
+                left_pair = json.loads(temp_df.loc[pair[0]].to_json())
+                right_pair = json.loads(temp_df.loc[pair[1]].to_json())
+            pair_element = {"a": left_pair, "b": right_pair, 
+                            "identifiers": {"a": pair[0], "b": pair[1]}, 
+                            "certain": "yes",
+                            "same person": "yes",
+                            "duplicate": certain_duplicate_default,
+                            "keep": "a" }
+            certain_list.append(pair_element)
+
+        # -- OUTPUT
+        certain_pairs_json = {"pairs": certain_list}
+        with open(os.path.join(self.env_folder, "ANNOTATION", "MATCHED_PAIRS.json"), "w") as f:
+            json.dump(certain_pairs_json, f)
+
+        for n, cur_list in enumerate(pot_list):
+            with open(os.path.join(self.env_folder, "ANNOTATION", f"POTENTIAL_PAIRS_{n}.json"), "w") as f:
+                json.dump({"pairs": cur_list}, f)
+
+
+
+    '''
+        ---------------------------------------------------
+        ------------ SUMMARY AND VISUALIZATION ------------
+        ---------------------------------------------------
+    '''
+    def show_pair(self, pairs, left_cols=None, right_cols=None, random_state=None):
+        '''
+            Show a random pair of records from the list 'pairs' obtained by the matching.
+
+            Args:
+            -----
+                pairs:
+                    List.
+                left_df:
+                    pandas.DataFrame.
+                right_df:
+                    pandas.DataFrame. Default None.
+                left_cols:
+                    List. Default None.
+                right_cols:
+                    List. Default None.
+                random_state:
+                    Integer. Default None.
+            Return:
+            -------
+                display_df:
+                    pandas.DataFrame.
+        '''
+        display_df = matching_utils.show_pair(pairs=pairs, left_df=self.left_df, right_df=self.right_df, 
+                                              left_cols=left_cols, right_cols=right_cols, random_state=random_state)
+        return display_df
 
     def score_summary(self, score_arr, bins, range_certain, range_potential, scale="linear"):
         '''
