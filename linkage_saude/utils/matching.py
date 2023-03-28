@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*- 
 
+import json
 import random
 import numpy as np
 import pandas as pd
@@ -127,6 +128,59 @@ def show_pair(pairs, left_df, right_df=None,
     ----------------- OPERATIONAL -------------------
     ------------------------------------------------- 
 '''
+
+def create_json_pairs(left_df, right_df, left_cols, right_cols, list_of_pairs, 
+                      classification="", duplicate_text_default="", rec_max=None):
+    '''
+        Description.
+
+        Args:
+        -----
+            left_df:
+                pandas.DataFrame.
+            right_df:
+                pandas.DataFrame.
+            left_cols:
+                List.
+            right_cols:
+                List.
+            list_of_pairs:
+                List.
+            duplicate_text_default:
+                String.
+            rec_max:
+                Integer. Default None.
+        Return:
+        -------
+            object_list:
+                List.
+    ''' 
+    count = 0
+    object_list = []
+    for row in list_of_pairs:
+        count+=1
+        pair = row
+    
+        left_pair = json.loads(left_df[left_cols].loc[pair[0]].to_json() )
+        if right_df is not None:
+            # --> signal for linkage
+            right_pair = json.loads( right_df[right_cols].loc[pair[1]].to_json() )
+        else:
+            # --> signal for deduplication
+            right_pair = json.loads( left_df[left_cols].loc[pair[1]].to_json() )
+            
+        pair_element = {"cod": count,
+                        "a": left_pair, "b": right_pair, 
+                        "identifiers": {"a": pair[0], "b": pair[1]}, 
+                        "classification": classification,
+                        "duplicate": duplicate_text_default,
+                        "keep": "a" }
+        object_list.append(pair_element)
+        if rec_max is not None and count==rec_max:
+            break
+
+    return object_list
+
 
 def find_root(index, ptr):
     dummy = index

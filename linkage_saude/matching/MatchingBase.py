@@ -108,8 +108,8 @@ class MatchingBase:
         ------------------------------------------
     '''
     def save_pairs(self, positive_pairs, potential_pairs, negative_pairs,  
-                   left_cols=None, right_cols=None, 
-                   division=50, overwrite=False, negative_max=None):
+                   left_cols=None, right_cols=None, duplicate_text_default=None, 
+                   overwrite=False, negative_max=5000):
         '''
             Save pairs (negative, positive and potential pairs) considering a 
             format for further annotation.
@@ -117,21 +117,28 @@ class MatchingBase:
             Args:
             -----
                 positive_pairs:
-                    List.
+                    List. List of 2-tuples containing the pair of IDs representing
+                    the pairs classified as positive.
                 potential_pairs:
-                    List.
+                    List. List of 2-tuples containing the pair of IDs representing
+                    the pairs classified as potential pairs (to be classified manually).
                 negative_pairs:
-                    List.
+                    List. List of 2-tuples containing the pair of IDs representing
+                    the pairs classified as negative.
                 left_cols:
-                    List. Default None.
+                    List. Default None. Columns to be used when saving the information of
+                    a given record from the left database.
                 right_cols:
-                    List. Default None.
-                division:
-                    Integer.
+                    List. Default None. Columns to be used when saving the information of
+                    a given record from the right database.
+                duplicate_text_default:
+                    String. Default None. Default text to be used in the 'duplicate' field
+                    of the positive pairs. 
                 overwrite:
-                    Boolean.
+                    Boolean. If False it will not override the existing files of 
+                    classified pairs. 
                 negative_max:
-                    Integer. Default None.
+                    Integer. Default None. Maximum number of negative pairs to be stored.
             Return:
             -------
                 None.
@@ -140,82 +147,26 @@ class MatchingBase:
         if os.path.isfile(os.path.join(annotation_folder, "POSITIVE_PAIRS.json")) and not overwrite:
             raise AnnotationError("Overwrite of annotation files not allowed.")
         
-        temp_left = self.left_df
-        temp_right = self.right_df
-
-
-
-
-    def create_annotation(self, certain_pairs, potential_pairs, division=50, cols=None, overwrite=False, certain_duplicate_default=None):
-        '''
-            Description.
-
-            Args:
-            -----
-                certain_pairs:
-                    List.
-                potential_pairs:
-                    List.
-                division:
-                    Integer.
-                cols:
-                    List.        
-        '''
-        annotation_folder = os.path.join(self.env_folder, "ANNOTATION")
-        if os.path.isfile(os.path.join(annotation_folder, "MATCHED_PAIRS.json")) and not overwrite:
-            raise AnnotationError("Overwrite of annotation files not allowed.")
-
-        temp_df = self.left_df
-        # --> POTENTIAL PAIRS (SEPARATE IN DIFFERENT FILES)
-        #splitted_pot = np.split(potential_pairs, np.arange(division, potential_pairs.shape[0]+1, division))
-        splitted_pot = [ potential_pairs[i:i+division] for i in range(0, len(potential_pairs)+1, division) ]
-        pot_list = []
-        for n in range(len(splitted_pot)):
-            current_pot_list = []
-            for row in splitted_pot[n]:
-                pair = row
-                if cols is not None:
-                    left_pair = json.loads(temp_df[cols].loc[pair[0]].to_json())
-                    right_pair = json.loads(temp_df[cols].loc[pair[1]].to_json())
-                else:
-                    left_pair = json.loads(temp_df.loc[pair[0]].to_json())
-                    right_pair = json.loads(temp_df.loc[pair[1]].to_json())
-                pair_element = {"a": left_pair, "b": right_pair, 
-                                "identifiers": {"a": pair[0], "b": pair[1]}, 
-                                "certain": "no", 
-                                "same person": None,
-                                "duplicate": None,
-                                "keep": "a" }
-                current_pot_list.append(pair_element)
-            pot_list.append(current_pot_list)
-        # --> CERTAIN PAIRS (ONE SINGLE FILE)
-        certain_list = []
-        for row in certain_pairs:
-            pair = row
-            if cols is not None:
-                left_pair = json.loads(temp_df[cols].loc[pair[0]].to_json())
-                right_pair = json.loads(temp_df[cols].loc[pair[1]].to_json())
-            else:
-                left_pair = json.loads(temp_df.loc[pair[0]].to_json())
-                right_pair = json.loads(temp_df.loc[pair[1]].to_json())
-            pair_element = {"a": left_pair, "b": right_pair, 
-                            "identifiers": {"a": pair[0], "b": pair[1]}, 
-                            "certain": "yes",
-                            "same person": "yes",
-                            "duplicate": certain_duplicate_default,
-                            "keep": "a" }
-            certain_list.append(pair_element)
-
-        # -- OUTPUT
-        certain_pairs_json = {"pairs": certain_list}
-        with open(os.path.join(self.env_folder, "ANNOTATION", "MATCHED_PAIRS.json"), "w") as f:
-            json.dump(certain_pairs_json, f)
-
-        for n, cur_list in enumerate(pot_list):
-            with open(os.path.join(self.env_folder, "ANNOTATION", f"POTENTIAL_PAIRS_{n}.json"), "w") as f:
-                json.dump({"pairs": cur_list}, f)
-
-
+        
+        positive_json_list = matching_utils.create_json_pairs(self.left_df, self.right_df, left_cols, right_cols, 
+                                                              "positive", positive_pairs, duplicate_text_default)
+        potential_json_list = matching_utils.create_json_pairs(self.left_df, self.right_df, left_cols, right_cols, 
+                                                               "potential", potential_pairs)
+        negative_json_list = matching_utils.create_json_pairs(self.left_df, self.right_df, left_cols, right_cols, 
+                                                              "negative", negative_pairs, rec_max=negative_max, 
+                                                               duplicate_text_default="no")
+        
+        positive_pairs_json = {"pairs": positive_json_list}
+        potential_pairs_json = {"pairs": potential_json_list}
+        negative_pairs_json = {"pairs": negative_json_list}
+        
+        # --> output
+        with open(os.path.join(self.env_folder, "annotation_files", "POSITIVE_PAIRS.json"), "w") as f:
+            json.dump(positive_pairs_json, f)
+        with open(os.path.join(self.env_folder, "annotation_files", "POTENTIAL_PAIRS.json"), "w") as f:
+            json.dump(potential_pairs_json, f)
+        with open(os.path.join(self.env_folder, "annotation_files", "NEGATIVE_PAIRS.json"), "w") as f:
+            json.dump(negative_pairs_json, f)
 
     '''
         ---------------------------------------------------
