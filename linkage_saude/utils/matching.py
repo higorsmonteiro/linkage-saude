@@ -45,7 +45,8 @@ def score_summary(score_arr, bins, range_certain, range_potential, scale="linear
                 Dictionary. Main information on the pairs obtained and their scores.
     '''
     fig, ax = plt.subplots(1, figsize=(7,4.8))
-    s = sns.histplot(score_arr, bins=bins, color="tab:red", ax=ax, alpha=0.65)
+    freq, bins = np.histogram(score_arr, bins=bins)
+    ax.bar(bins[:-1], freq, facecolor="royalblue", edgecolor="white", width=1.0, linewidth=3.0, align='edge')
 
     ax.spines['top'].set_color('none')
     ax.spines['right'].set_color('none')
@@ -58,13 +59,12 @@ def score_summary(score_arr, bins, range_certain, range_potential, scale="linear
     ax.spines["right"].set_linewidth(1.5)
 
     ax.tick_params(width=1.5, labelsize=11)
-    ax.set_ylabel("Frequência", weight="bold", fontsize=14, labelpad=8)
-    ax.set_xlabel("Score", weight="bold", fontsize=13)
+    ax.set_ylabel("Número de pares", weight="bold", fontsize=14, labelpad=8, color="#5b5b5b")
+    ax.set_xlabel("Score", weight="bold", fontsize=13, color="#5b5b5b")
     ax.grid(alpha=0.2)
 
-    freq, bins = np.histogram(score_arr, bins=bins)
-    ax.fill_between(range_potential, y1=max(freq)+10, color="tab:orange", alpha=0.2)
-    ax.fill_between(range_certain, y1=max(freq)+10, color="tab:blue", alpha=0.2)
+    ax.fill_between(range_potential, y1=max(freq)+10, color="orange", alpha=0.2)
+    ax.fill_between(range_certain, y1=max(freq)+10, color="dodgerblue", alpha=0.2)
 
     ncertain = score_arr[(score_arr>=range_certain[0]) & (score_arr<range_certain[1])].shape[0]
     npotential = score_arr[(score_arr>=range_potential[0]) & (score_arr<range_potential[1])].shape[0]
@@ -161,13 +161,13 @@ def create_json_pairs(left_df, right_df, left_cols, right_cols, list_of_pairs,
         count+=1
         pair = row
     
-        left_pair = json.loads(left_df[left_cols].loc[pair[0]].to_json() )
+        left_pair = left_df[left_cols].loc[pair[0]].to_dict()
         if right_df is not None:
-            # --> signal for linkage
-            right_pair = json.loads( right_df[right_cols].loc[pair[1]].to_json() )
+            # --> Signal for linkage
+            right_pair = right_df[right_cols].loc[pair[1]].to_dict()
         else:
-            # --> signal for deduplication
-            right_pair = json.loads( left_df[left_cols].loc[pair[1]].to_json() )
+            # --> Signal for deduplication
+            right_pair = left_df[left_cols].loc[pair[1]].to_dict() 
             
         pair_element = {"cod": count,
                         "a": left_pair, "b": right_pair, 
@@ -176,6 +176,7 @@ def create_json_pairs(left_df, right_df, left_cols, right_cols, list_of_pairs,
                         "duplicate": duplicate_text_default,
                         "keep": "a" }
         object_list.append(pair_element)
+        #pair_element = -1
         if rec_max is not None and count==rec_max:
             break
 
@@ -207,8 +208,8 @@ def deduple_grouping(pairs):
             matched_records:
                 collections.defaultdict. 
     '''
-    left_nots = pairs["left"].tolist()
-    right_nots = pairs["right"].tolist()
+    left_nots = pairs["left_id"].tolist()
+    right_nots = pairs["right_id"].tolist()
 
     # --> Define data structure of trees to aggregate several matched files through transitive relations. 
     # ----> Unique records in 'pairs'

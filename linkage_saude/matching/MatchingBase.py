@@ -144,29 +144,57 @@ class MatchingBase:
                 None.
         '''
         annotation_folder = os.path.join(self.env_folder, "annotation_files")
-        if os.path.isfile(os.path.join(annotation_folder, "POSITIVE_PAIRS.json")) and not overwrite:
+        if not os.path.isdir(annotation_folder):
+            os.mkdir(annotation_folder)
+        if not overwrite:
             raise AnnotationError("Overwrite of annotation files not allowed.")
         
         
-        positive_json_list = matching_utils.create_json_pairs(self.left_df, self.right_df, left_cols, right_cols, 
-                                                              "positive", positive_pairs, duplicate_text_default)
-        potential_json_list = matching_utils.create_json_pairs(self.left_df, self.right_df, left_cols, right_cols, 
-                                                               "potential", potential_pairs)
-        negative_json_list = matching_utils.create_json_pairs(self.left_df, self.right_df, left_cols, right_cols, 
-                                                              "negative", negative_pairs, rec_max=negative_max, 
-                                                               duplicate_text_default="no")
-        
-        positive_pairs_json = {"pairs": positive_json_list}
-        potential_pairs_json = {"pairs": potential_json_list}
-        negative_pairs_json = {"pairs": negative_json_list}
-        
-        # --> output
+        json_list = matching_utils.create_json_pairs(self.left_df, self.right_df, left_cols, right_cols, 
+                                                              positive_pairs, "positive", duplicate_text_default)
+        pairs_json = {"pairs": json_list}
         with open(os.path.join(self.env_folder, "annotation_files", "POSITIVE_PAIRS.json"), "w") as f:
-            json.dump(positive_pairs_json, f)
+            json.dump(pairs_json, f, indent=4)
+        
+        json_list = matching_utils.create_json_pairs(self.left_df, self.right_df, left_cols, right_cols, 
+                                                               potential_pairs, "potential")
+        pairs_json = {"pairs": json_list}
         with open(os.path.join(self.env_folder, "annotation_files", "POTENTIAL_PAIRS.json"), "w") as f:
-            json.dump(potential_pairs_json, f)
+            json.dump(pairs_json, f, indent=4)
+    
+        json_list = matching_utils.create_json_pairs(self.left_df, self.right_df, left_cols, right_cols, 
+                                                              negative_pairs, "negative", rec_max=negative_max, 
+                                                              duplicate_text_default="no")
+        pairs_json = {"pairs": json_list}
         with open(os.path.join(self.env_folder, "annotation_files", "NEGATIVE_PAIRS.json"), "w") as f:
-            json.dump(negative_pairs_json, f)
+            json.dump(pairs_json, f, indent=4)
+        
+
+    def load_pairs(self, annotation_folder="annotation_files"):
+        '''
+        
+        '''
+        annotation_folder = os.path.join(self.env_folder, annotation_folder)
+        if not os.path.isdir(annotation_folder):
+            raise AnnotationError("Annotation folder does not exist.")
+
+        with open(os.path.join(annotation_folder, "POSITIVE_PAIRS.json"), "r", encoding="latin") as f:
+            positive_p = json.load(f)
+        with open(os.path.join(annotation_folder, "POTENTIAL_PAIRS.json"), "r", encoding="latin") as f:
+            potential_p = json.load(f)
+        
+        pairs = positive_p["pairs"] + potential_p["pairs"]
+
+        # --> Create dataframe
+        df_pairs = {
+            "left_id": [ pair["identifiers"]["a"] for pair in pairs ],
+            "right_id": [ pair["identifiers"]["b"] for pair in pairs ],
+            "classification": [ pair["classification"] for pair in pairs ],
+            "duplicate": [ pair["duplicate"] for pair in pairs ],
+            "keep": [ pair["keep"] for pair in pairs ],
+        }
+        df_pairs = pd.DataFrame(df_pairs)
+        return df_pairs
 
     '''
         ---------------------------------------------------

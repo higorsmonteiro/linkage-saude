@@ -40,3 +40,28 @@ def uniformize_name(string, sep=''):
         new_string = sep.join(new_string)
     new_string = unidecode(new_string)
     return new_string
+
+
+def cns_is_valid(cns):
+    """
+    Função para validar número do CNS - Cartão Nacional de Saúde ou Cartão do SUS
+    
+    :param cns: Número de CNS que será validado
+    :type cns: String (Caso não seja, será transformado)
+    :rtype: Boolean
+    """
+    cns = ''.join(filter(str.isdigit, str(cns)))
+    
+    if len(cns) != 15:
+        return False
+    
+    return sum(
+        [int(cns[i]) * (15 - i) for i in range(15)]
+    ) % 11 == 0
+
+
+def process_bairros():
+    '''
+    
+    '''
+    pass

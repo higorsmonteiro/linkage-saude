@@ -218,6 +218,76 @@ class DataGal(DataBase):
         self._raw_data = self._raw_data.drop("DATA DA SOLICITAÇÃO_FMT", axis=1)
         self.has_id = True
 
+
+class DataSivep(DataBase):
+    db_type = "SIVEP"
+
+    def validate_schema(self):
+        '''Define all validations for the SINAN database.
+
+            Args:
+            --------
+                None.
+
+        '''
+        # -- Columns to not validate because they are empty
+        dont_validate = defaultdict(lambda: True, zip(self.empty_columns, [False for n in self.empty_columns]))
+
+        # Create validation patterns 
+        schema_dates_1 = DataFrameSchema(
+            {
+                'DT_NOTIFIC': Column('datetime64[ns]', coerce=False, nullable=True),
+                'DT_SIN_PRI': Column('datetime64[ns]', coerce=False, nullable=True),
+                'DT_NASC': Column('datetime64[ns]', coerce=False, nullable=True),
+            }, strict=False, coerce=False
+        )
+        schema_dates_2 = DataFrameSchema(
+            {
+                'DT_NOTIFIC': Column(object, coerce=False, nullable=True),
+                'DT_SIN_PRI': Column(object, coerce=False, nullable=True),
+                'DT_NASC': Column(object, coerce=False, nullable=True),
+            }, strict=False, coerce=False
+        )
+        
+        schema_object = DataFrameSchema(
+            {
+                'NU_NOTIFIC': Column(object, nullable=True, required=True),
+            }, strict=False, coerce=False
+        )
+        
+        # Validations
+        # -- Validation 1: Date columns
+        try:
+            schema_dates_1.validate(self._raw_data)
+            self.validated = True
+        except (pandera.errors.SchemaError, pandera.errors.SchemaErrors):
+            try:
+                schema_dates_2.validate(self._raw_data)
+                # -- Covert object columns
+                self._raw_data["DT_NOTIFIC"] = pd.to_datetime(self._raw_data["DT_NOTIFIC"], format="%d/%m/%Y")
+                self._raw_data["DT_SIN_PRI"] = pd.to_datetime(self._raw_data["DT_SIN_PRI"], format="%d/%m/%Y")
+                self._raw_data["DT_NASC"] = pd.to_datetime(self._raw_data["DT_NASC"], format="%d/%m/%Y")
+                self.validated = True
+            except (pandera.errors.SchemaError, pandera.errors.SchemaErrors):
+                pandera.errors.SchemaError("Essential date columns are neither date nor object format")
+
+        # -- Validation 2: Essential SINAN columns (original data must be preserved => object columns)
+        try:
+            schema_object.validate(self._raw_data.dropna(axis=1, how='all'))
+            self.validated = True
+        except (pandera.errors.SchemaError, pandera.errors.SchemaErrors) as err:
+            print(err.args)
+
+
+    def create_id(self):
+        '''
+        
+        '''
+        self._raw_data["ID_SIVEP"] = self._raw_data["NU_NOTIFIC"].copy()
+        self._data = pd.DataFrame(self._raw_data["ID_SIVEP"])
+        self.has_id = True
+
+
 '''
     # ----- CUSTOM data object ----- #
 '''
