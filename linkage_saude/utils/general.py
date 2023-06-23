@@ -8,6 +8,7 @@
 '''
 
 # --> Lib
+import pandas as pd
 import numpy as np
 from tqdm import tqdm
 from unidecode import unidecode
@@ -54,10 +55,13 @@ def cns_is_valid(cns):
     
     if len(cns) != 15:
         return False
+    if cns=="000000000000000" or pd.isna(cns):
+        return False
     
     return sum(
         [int(cns[i]) * (15 - i) for i in range(15)]
     ) % 11 == 0
+
 
 
 def process_bairros():

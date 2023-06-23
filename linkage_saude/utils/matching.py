@@ -4,11 +4,10 @@ import json
 import random
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
-from collections import defaultdict
-
 import seaborn as sns
+from tqdm import tqdm
 import matplotlib.pyplot as plt
+from collections import defaultdict
 
 from linkage_saude.exceptions import *
 
@@ -48,8 +47,12 @@ def score_summary(score_arr, bins, range_certain, range_potential, scale="linear
     freq, bins = np.histogram(score_arr, bins=bins)
     ax.bar(bins[:-1], freq, facecolor="royalblue", edgecolor="white", width=1.0, linewidth=3.0, align='edge')
 
+    
+    cc = "#353535"
     ax.spines['top'].set_color('none')
     ax.spines['right'].set_color('none')
+    ax.spines["left"].set_color(cc)
+    ax.spines["bottom"].set_color(cc)
     ax.spines['left'].set_position(('outward', 7))
     ax.spines['bottom'].set_position(('outward', 7))
 
@@ -58,9 +61,9 @@ def score_summary(score_arr, bins, range_certain, range_potential, scale="linear
     ax.spines["top"].set_linewidth(1.5)
     ax.spines["right"].set_linewidth(1.5)
 
-    ax.tick_params(width=1.5, labelsize=11)
-    ax.set_ylabel("Número de pares", weight="bold", fontsize=14, labelpad=8, color="#5b5b5b")
-    ax.set_xlabel("Score", weight="bold", fontsize=13, color="#5b5b5b")
+    ax.tick_params(width=1.5, labelsize=11, colors=cc)
+    ax.set_ylabel("Número de pares", weight="bold", fontsize=14, labelpad=8, color=cc)
+    ax.set_xlabel("Score", weight="bold", fontsize=13, color=cc)
     ax.grid(alpha=0.2)
 
     ax.fill_between(range_potential, y1=max(freq)+10, color="orange", alpha=0.2)
@@ -73,6 +76,8 @@ def score_summary(score_arr, bins, range_certain, range_potential, scale="linear
     ax.set_xticks(bins)
     ax.set_xticklabels([f"{n:.1f}" for n in bins], rotation=45)
     ax.set_yscale(scale)
+    ax.xaxis.label.set_color("#5b5b5b")
+    ax.yaxis.label.set_color("#5b5b5b")
     info = {"FIG": fig, "AXIS": ax, "FREQUENCY AND BINS": (freq, bins), 
             "# IGUAIS": ncertain, "# POTENCIAIS": npotential, "# DIFERENTES": ndiff }
     return info

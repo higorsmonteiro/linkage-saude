@@ -48,7 +48,7 @@ class ProcessSinan_v2(ProcessBase):
         self._data["segundo_nome_mae"] = self._data["nome_mae"].apply(lambda x: x.split(" ")[1] if pd.notna(x) and len(x.split(" "))>1 else np.nan )
         self._data["complemento_nome_mae"] = self._data["nome_mae"].apply(lambda x: ' '.join(x.split(" ")[2:]) if pd.notna(x) and len(x.split(" "))>2 else np.nan )
 
-    def duplicate_definition(self, persons_pairs, delta_notific=None, delta_sintomas=None, same_unit=None):
+    def define_duplicate(self, persons_pairs, delta_notific=None, delta_sintomas=None, same_unit=None):
         '''
             Description.
 
@@ -70,7 +70,7 @@ class ProcessSinan_v2(ProcessBase):
                 negatives:
                     List of 2-tuples.
         '''
-        temp_index = self.raw_data.set_index("ID_SIVEP")
+        temp_index = self.raw_data.set_index("ID_GEO")
 
         positives = []
         negatives = []
@@ -124,14 +124,14 @@ class ProcessSivep_v2(ProcessBase):
         self._data["nascimento_ano"] = self._data["dt_nasc"].apply(lambda x: x.year if hasattr(x, 'day') and pd.notna(x) else np.nan)
 
         self._data["primeiro_nome"] = self._data["nome"].apply(lambda x: x.split(" ")[0] if pd.notna(x) else np.nan )
-        self._data["segundo_nome"] = self._data["nome"].apply(lambda x: x.split(" ")[1] if pd.notna(x) and len(x.split(" "))>1 else np.nan )
-        self._data["complemento_nome"] = self._data["nome"].apply(lambda x: ' '.join(x.split(" ")[2:]) if pd.notna(x) and len(x.split(" "))>2 else np.nan )
+        #self._data["segundo_nome"] = self._data["nome"].apply(lambda x: x.split(" ")[1] if pd.notna(x) and len(x.split(" "))>1 else np.nan )
+        self._data["complemento_nome"] = self._data["nome"].apply(lambda x: ' '.join(x.split(" ")[1:]) if pd.notna(x) and len(x.split(" "))>1 else np.nan )
         
         self._data["primeiro_nome_mae"] = self._data["nome_mae"].apply(lambda x: x.split(" ")[0] if pd.notna(x) else np.nan )
         self._data["segundo_nome_mae"] = self._data["nome_mae"].apply(lambda x: x.split(" ")[1] if pd.notna(x) and len(x.split(" "))>1 else np.nan )
         self._data["complemento_nome_mae"] = self._data["nome_mae"].apply(lambda x: ' '.join(x.split(" ")[2:]) if pd.notna(x) and len(x.split(" "))>2 else np.nan )
 
-    def duplicate_definition(self, persons_pairs, delta_notific=None, delta_sintomas=None, same_unit=None):
+    def define_duplicate(self, persons_pairs, delta_notific=None, delta_sintomas=None, same_unit=None):
         '''
             Description.
 
@@ -178,6 +178,38 @@ class ProcessSivep_v2(ProcessBase):
             else:
                 negatives.append(pair)
         return positives, negatives
+
+
+class ProcessSinan_v2(ProcessBase):
+    db_type = "SINAN"
+
+    def matching_standard(self):
+        '''
+        
+        '''
+        self._data["nome"] = self._raw_data["NM_PACIENT"].apply(lambda x: general_utils.uniformize_name(x.upper().strip(), sep=" ") if pd.notna(x) else np.nan).apply(lambda x: re.sub(' {2,}', ' ', x) if pd.notna(x) else np.nan)
+        self._data["nome_mae"] = self._raw_data["NM_MAE_PAC"].apply(lambda x: general_utils.uniformize_name(x.upper().strip(), sep=" ") if pd.notna(x) else np.nan).apply(lambda x: re.sub(' {2,}', ' ', x) if pd.notna(x) else np.nan)
+        self._data["sexo"] = self._raw_data["CS_SEXO"].apply(lambda x: x.upper().strip() if pd.notna(x) else np.nan)
+        self._data["dt_nasc"] = self._raw_data["DT_NASC"].apply(lambda x: pd.to_datetime(x, format="%d/%m/%Y", errors="coerce") if not hasattr(x, 'year') and pd.notna(x) else x)
+        self._data["cpf"] = [ np.nan for n in range(self._raw_data.shape[0]) ]
+        self._data["cns"] = self._raw_data["ID_CNS_SUS"].apply(lambda x: x if isinstance(x, str) and general_utils.cns_is_valid(x) and pd.notna(x) else ( f"{x:13.0f}".replace(" ", "0") if not isinstance(x, str) and pd.notna(x) else np.nan))
+        self._data["cep"] = self._raw_data["NU_CEP"].apply(lambda x: x if isinstance(x, str) and pd.notna(x) else ( f"{x:8.0f}".replace(" ", "0") if not isinstance(x, str) and pd.notna(x) else np.nan))
+        self._data["bairro"] = self._raw_data["NM_BAIRRO"].apply(lambda x: general_utils.uniformize_name(x.upper().strip(), sep=" ") if pd.notna(x) else np.nan)
+        self._data["cod_unidade"] = self._raw_data["ID_UNIDADE"].apply(lambda x: x if pd.notna(x) else np.nan)
+
+        self._data["FONETICA_N"] = self._data["nome"].apply(lambda x: f"{x.split(' ')[0]}{x.split(' ')[-1]}" if pd.notna(x) else np.nan)
+
+        self._data["nascimento_dia"] = self._data["dt_nasc"].apply(lambda x: x.day if hasattr(x, 'day') and pd.notna(x) else np.nan)
+        self._data["nascimento_mes"] = self._data["dt_nasc"].apply(lambda x: x.month if hasattr(x, 'day') and pd.notna(x) else np.nan)
+        self._data["nascimento_ano"] = self._data["dt_nasc"].apply(lambda x: x.year if hasattr(x, 'day') and pd.notna(x) else np.nan)
+
+        self._data["primeiro_nome"] = self._data["nome"].apply(lambda x: x.split(" ")[0] if pd.notna(x) else np.nan )
+        #self._data["segundo_nome"] = self._data["nome"].apply(lambda x: x.split(" ")[1] if pd.notna(x) and len(x.split(" "))>1 else np.nan )
+        self._data["complemento_nome"] = self._data["nome"].apply(lambda x: ' '.join(x.split(" ")[1:]) if pd.notna(x) and len(x.split(" "))>1 else np.nan )
+        
+        self._data["primeiro_nome_mae"] = self._data["nome_mae"].apply(lambda x: x.split(" ")[0] if pd.notna(x) else np.nan )
+        self._data["segundo_nome_mae"] = self._data["nome_mae"].apply(lambda x: x.split(" ")[1] if pd.notna(x) and len(x.split(" "))>1 else np.nan )
+        self._data["complemento_nome_mae"] = self._data["nome_mae"].apply(lambda x: ' '.join(x.split(" ")[2:]) if pd.notna(x) and len(x.split(" "))>2 else np.nan )
 
 
 '''

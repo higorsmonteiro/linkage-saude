@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*- 
 
 import os
-import json
+#import json
+import ujson as json
 import numpy as np
 import pandas as pd
 import recordlinkage
@@ -151,7 +152,7 @@ class MatchingBase:
         
         
         json_list = matching_utils.create_json_pairs(self.left_df, self.right_df, left_cols, right_cols, 
-                                                              positive_pairs, "positive", duplicate_text_default)
+                                                     positive_pairs, "positive", duplicate_text_default)
         pairs_json = {"pairs": json_list}
         with open(os.path.join(self.env_folder, "annotation_files", "POSITIVE_PAIRS.json"), "w") as f:
             json.dump(pairs_json, f, indent=4)
