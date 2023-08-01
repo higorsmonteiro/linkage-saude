@@ -25,64 +25,68 @@ from linkage_saude.types.DataBase import DataBase
 class DataSinan(DataBase):
     db_type = "SINAN"
 
-    def validate_schema(self):
+    def validate_schema(self, not_required=None):
         '''Define all validations for the SINAN database.
 
             Args:
             --------
-                None.
+                not_required:
+                    List of Strings. Default None.
 
         '''
         # -- Columns to not validate because they are empty
-        dont_validate = defaultdict(lambda: True, zip(self.empty_columns, [False for n in self.empty_columns]))
+        if not_required is None:
+            self.do_validate = defaultdict(lambda: True, zip(self.empty_columns, [False for n in self.empty_columns]))
+        else:
+            self.do_validate = defaultdict(lambda: True, zip(self.empty_columns+not_required, [False for n in self.empty_columns+not_required]))
 
         # Create validation patterns 
         schema_dates_1 = DataFrameSchema(
             {
-                'DT_NOTIFIC': Column('datetime64[ns]', coerce=False, nullable=True),
-                'DT_SIN_PRI': Column('datetime64[ns]', coerce=False, nullable=True),
-                'DT_NASC': Column('datetime64[ns]', coerce=False, nullable=True),
+                'DT_NOTIFIC': Column('datetime64[ns]', coerce=False, nullable=True, required=self.do_validate['DT_NOTIFIC']),
+                'DT_SIN_PRI': Column('datetime64[ns]', coerce=False, nullable=True, required=self.do_validate['DT_SIN_PRI']),
+                'DT_NASC': Column('datetime64[ns]', coerce=False, nullable=True, required=self.do_validate['DT_NASC']),
             }, strict=False, coerce=False
         )
         schema_dates_2 = DataFrameSchema(
             {
-                'DT_NOTIFIC': Column(object, coerce=False, nullable=True),
-                'DT_SIN_PRI': Column(object, coerce=False, nullable=True),
-                'DT_NASC': Column(object, coerce=False, nullable=True),
+                'DT_NOTIFIC': Column(object, coerce=False, nullable=True, required=self.do_validate['DT_NOTIFIC']),
+                'DT_SIN_PRI': Column(object, coerce=False, nullable=True, required=self.do_validate['DT_SIN_PRI']),
+                'DT_NASC': Column(object, coerce=False, nullable=True, required=self.do_validate['DT_NASC']),
             }, strict=False, coerce=False
         )
         
         schema_object = DataFrameSchema(
             {
                 'NU_NOTIFIC': Column(object, nullable=True, required=True),
-                'TP_NOT': Column(object, nullable=True, required=dont_validate['TP_NOT']),
+                'TP_NOT': Column(object, nullable=True, required=self.do_validate['TP_NOT']),
                 'ID_AGRAVO': Column(object, nullable=True, required=True),
-                'NU_ANO': Column(object, nullable=True, required=dont_validate['NU_ANO']),
-                'SG_UF_NOT': Column(object, nullable=True, required=dont_validate['SG_UF_NOT']),
+                'NU_ANO': Column(object, nullable=True, required=self.do_validate['NU_ANO']),
+                'SG_UF_NOT': Column(object, nullable=True, required=self.do_validate['SG_UF_NOT']),
                 'ID_MUNICIP': Column(object, nullable=True, required=True),
-                'ID_REGIONA': Column(object, nullable=True, required=dont_validate['ID_REGIONA']),
-                'NM_PACIENT': Column(object, nullable=True, required=dont_validate['NM_PACIENT']),
-                'NU_IDADE_N': Column(object, nullable=True, required=dont_validate['NU_IDADE_N']),
-                'CS_SEXO': Column(object, nullable=True, required=dont_validate['CS_SEXO']),
-                'CS_GESTANT': Column(object, nullable=True, required=dont_validate['CS_GESTANT']),
-                'CS_RACA': Column(object, nullable=True, required=dont_validate['CS_RACA']),
-                'CS_ESCOL_N': Column(object, nullable=True, required=dont_validate['CS_ESCOL_N']),
-                'ID_CNS_SUS': Column(object, nullable=True, required=dont_validate['ID_CNS_SUS']),
-                'NM_MAE_PAC': Column(object, nullable=True, required=dont_validate['NM_MAE_PAC']),
-                'SG_UF': Column(object, nullable=True, required=dont_validate['SG_UF']),
-                'ID_MN_RESI': Column(object, nullable=True, required=dont_validate['ID_MN_RESI']),
-                'ID_RG_RESI': Column(object, nullable=True, required=dont_validate['ID_RG_RESI']),
-                'ID_DISTRIT': Column(object, nullable=True, required=dont_validate['NM_BAIRRO']),
-                'NM_BAIRRO': Column(object, nullable=True, required=dont_validate['NM_BAIRRO']),
-                'NM_LOGRADO': Column(object, nullable=True, required=dont_validate['NM_LOGRADO']),
-                'NU_NUMERO': Column(object, nullable=True, required=dont_validate['NU_NUMERO']),
-                'NM_COMPLEM': Column(object, nullable=True, required=dont_validate['NM_COMPLEM']),
-                'NM_REFEREN': Column(object, nullable=True, required=dont_validate['NM_REFEREN']),
-                'NU_CEP': Column(object, nullable=True, required=dont_validate['NU_CEP']),
-                'NU_DDD_TEL': Column(object, nullable=True, required=dont_validate['NU_DDD_TEL']),
-                'NU_TELEFON': Column(object, nullable=True, required=dont_validate['NU_TELEFON']),
-                'CS_ZONA': Column(object, nullable=True, required=dont_validate['CS_ZONA']),
-                'ID_PAIS': Column(object, nullable=True, required=dont_validate['ID_PAIS']),
+                'ID_REGIONA': Column(object, nullable=True, required=self.do_validate['ID_REGIONA']),
+                'NM_PACIENT': Column(object, nullable=True, required=self.do_validate['NM_PACIENT']),
+                'NU_IDADE_N': Column(object, nullable=True, required=self.do_validate['NU_IDADE_N']),
+                'CS_SEXO': Column(object, nullable=True, required=self.do_validate['CS_SEXO']),
+                'CS_GESTANT': Column(object, nullable=True, required=self.do_validate['CS_GESTANT']),
+                'CS_RACA': Column(object, nullable=True, required=self.do_validate['CS_RACA']),
+                'CS_ESCOL_N': Column(object, nullable=True, required=self.do_validate['CS_ESCOL_N']),
+                'ID_CNS_SUS': Column(object, nullable=True, required=self.do_validate['ID_CNS_SUS']),
+                'NM_MAE_PAC': Column(object, nullable=True, required=self.do_validate['NM_MAE_PAC']),
+                'SG_UF': Column(object, nullable=True, required=self.do_validate['SG_UF']),
+                'ID_MN_RESI': Column(object, nullable=True, required=self.do_validate['ID_MN_RESI']),
+                'ID_RG_RESI': Column(object, nullable=True, required=self.do_validate['ID_RG_RESI']),
+                'ID_DISTRIT': Column(object, nullable=True, required=self.do_validate['NM_BAIRRO']),
+                'NM_BAIRRO': Column(object, nullable=True, required=self.do_validate['NM_BAIRRO']),
+                'NM_LOGRADO': Column(object, nullable=True, required=self.do_validate['NM_LOGRADO']),
+                'NU_NUMERO': Column(object, nullable=True, required=self.do_validate['NU_NUMERO']),
+                'NM_COMPLEM': Column(object, nullable=True, required=self.do_validate['NM_COMPLEM']),
+                'NM_REFEREN': Column(object, nullable=True, required=self.do_validate['NM_REFEREN']),
+                'NU_CEP': Column(object, nullable=True, required=self.do_validate['NU_CEP']),
+                'NU_DDD_TEL': Column(object, nullable=True, required=self.do_validate['NU_DDD_TEL']),
+                'NU_TELEFON': Column(object, nullable=True, required=self.do_validate['NU_TELEFON']),
+                'CS_ZONA': Column(object, nullable=True, required=self.do_validate['CS_ZONA']),
+                'ID_PAIS': Column(object, nullable=True, required=self.do_validate['ID_PAIS']),
             }, strict=False, coerce=False
         )
         
@@ -96,8 +100,10 @@ class DataSinan(DataBase):
                 schema_dates_2.validate(self._raw_data)
                 # -- Covert object columns
                 self._raw_data["DT_NOTIFIC"] = pd.to_datetime(self._raw_data["DT_NOTIFIC"])
-                self._raw_data["DT_SIN_PRI"] = pd.to_datetime(self._raw_data["DT_SIN_PRI"])
-                self._raw_data["DT_NASC"] = pd.to_datetime(self._raw_data["DT_NASC"])
+                if self.do_validate['DT_SIN_PRI']:
+                    self._raw_data["DT_SIN_PRI"] = pd.to_datetime(self._raw_data["DT_SIN_PRI"])
+                if self.do_validate['DT_NASC']:
+                    self._raw_data["DT_NASC"] = pd.to_datetime(self._raw_data["DT_NASC"])
                 self.validated = True
             except (pandera.errors.SchemaError, pandera.errors.SchemaErrors):
                 pandera.errors.SchemaError("Essential date columns are neither date nor object format")

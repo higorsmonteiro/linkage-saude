@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*- 
 
+
 import os
-#import json
 import ujson as json
 import numpy as np
 import pandas as pd
@@ -11,53 +11,63 @@ from linkage_saude.exceptions import *
 import linkage_saude.utils.matching as matching_utils
 
 class MatchingBase:
-    def __init__(self, left_df, right_df=None, left_id=None, right_id=None, env_folder=None) -> None:
-        '''
-        
-        '''
-        self._features = None
-        self.linkage_vars = None
-        self.compare_cl, self._features, self.sum_rules = None, None, None
+    '''
+        Base class to define general definitions for deduplication and probabilistic linkage over
+        specific databases.
 
-        # --> Solve for the left dataframe
-        self.left_df = left_df.copy()
-        self.left_id = left_id
+        Args:
+        -----
+            left_df:
+                pandas.DataFrame.
+            right_df:
+                pandas.DataFrame.
+            left_id:
+                String.
+            right_id:
+                String.
+            env_folder:
+                String.
+    '''
+
+    def __init__(self, left_df, right_df=None, left_id=None, right_id=None, env_folder=None) -> None:
+        self._comparison_matrix = None
+        self.linkage_vars = None
+        self.compare_cl, self._comparison_matrix = None, None
+
+        # --> solve for the left dataframe
+        self.left_df, self.left_id = left_df.copy(), left_id
         if self.left_id is None:
-            raise UniqueIdentifierMissing("Must provide an existing column as a unique identifier.")
+            raise Exception("Must provide an existing field as a unique identifier.")
         self.left_df = self.left_df.set_index(self.left_id)
         
-        # --> Solve for the right dataframe, if the case
+        # --> solve for the right dataframe, if the case
         self.right_df = None
         if right_df is not None:
-            self.right_df = right_df.copy()
-            self.right_id = right_id
+            self.right_df, self.right_id = right_df.copy(), right_id
             if self.right_id is None:
-                raise UniqueIdentifierMissing("Must provide an existing column as a unique identifier.")
+                raise Exception("Must provide an existing field as a unique identifier.")
             self.right_df = self.right_df.set_index(self.right_id)
             
-        # --> Select working folder
+        # --> select working folder
         self.env_folder = env_folder
-        if self.env_folder is None:
-            raise OutputPathMissing("Must provide a working folder.")
-        
-        if not os.path.isdir(self.env_folder):
+        if self.env_folder is not None and not os.path.isdir(self.env_folder):
             os.mkdir(self.env_folder)
 
     @property
-    def features(self):
-        if self._features is not None:
-            return self._features
+    def comparison_matrix(self):
+        if self._comparison_matrix is not None:
+            return self._comparison_matrix
 
-    @features.setter
-    def features(self):
-        raise AttributeError("Not possible to change this attribute from outside.")
+    @comparison_matrix.setter
+    def comparison_matrix(self):
+        raise Exception("Not possible to change this attribute from outside.")
     
     '''
         -------------------------------------------
         ------------ MATCHING SETTINGS ------------
         -------------------------------------------
     '''
-    def set_linkage(self, compare_rules, sum_rules, string_method="jarowinkler", numeric_method="linear"):
+    def set_linkage(self, compare_rules, string_method="damerau_levenshtein"):
         '''
             Description.
 
@@ -76,32 +86,21 @@ class MatchingBase:
             Return:
                 None.
         '''
-        self.sum_rules = sum_rules
         self.linkage_vars = list(compare_rules.keys())
 
-        # -- Settings for comparison between fields
+        # -- settings for comparison between fields
         self.compare_cl = recordlinkage.Compare()
-        for map_item in compare_rules.items():
-            key, values = map_item
+        for key, values in compare_rules.items():
             if values[0]=="exact":
                 self.compare_cl.exact(key, key, label=key)
             elif values[0]=="string":
                 self.compare_cl.string(key, key, label=key, threshold=values[1], method=string_method)
-                #self.compare_cl.string(key, key, label=key, method=string_method)
-            elif values[0]=="date": 
-                self.compare_cl.date(key, key, label=key)
-            elif values[0]=="numeric": # can be used for timestamps
-                self.compare_cl.numeric(key, key, label=key, method=numeric_method)
-            elif values[0]=="geo":
-                pass
             else:
                 pass
+        return self
 
     def perform_linkage(self):
-        '''
-        
-        '''
-        pass
+        return self
 
     '''
         ------------------------------------------
@@ -144,11 +143,14 @@ class MatchingBase:
             -------
                 None.
         '''
+        if self.env_folder is None:
+            raise Exception("No working folder was provided.")
+
         annotation_folder = os.path.join(self.env_folder, "annotation_files")
         if not os.path.isdir(annotation_folder):
             os.mkdir(annotation_folder)
         if not overwrite:
-            raise AnnotationError("Overwrite of annotation files not allowed.")
+            raise Exception("Overwrite of annotation files not allowed.")
         
         
         json_list = matching_utils.create_json_pairs(self.left_df, self.right_df, left_cols, right_cols, 
